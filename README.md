@@ -1,3 +1,4 @@
-![chrono](https://user-images.githubusercontent.com/5354910/118357808-34b85580-b57c-11eb-98c1-81ddedc45442.png)
+![chrono](https://user-images.githubusercontent.com/5354910/118358070-739adb00-b57d-11eb-989b-68baf83f9584.png)
+
 
 Chrono is a scheduler library which lets you run your task and code periodically
