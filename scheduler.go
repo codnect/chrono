@@ -6,116 +6,182 @@ import (
 	"time"
 )
 
-type Option func(task *ScheduledTask)
-
-func WithAsync() Option {
-	return func(task *ScheduledTask) {
-
-		if task.fixedRate == -1 {
-			panic("you can only run a task with a fixed rate as async")
-		}
-
-		task.isAsync = true
-	}
-}
-
-func WithInitialDelay(initialDelay time.Duration) Option {
-	return func(task *ScheduledTask) {
-
-		if task.isAsync {
-			panic("async task does not support this option")
-		}
-
-		if initialDelay > 0 {
-			task.initialDelay = initialDelay
-		}
-
-	}
-}
-
-func WithCron(expression string) Option {
-	return func(task *ScheduledTask) {
-		_, err := cronParser.Parse(expression)
-
-		if err != nil {
-			panic(err)
-		}
-
-	}
-}
-
-func WithFixedDelay(delay time.Duration) Option {
-	return func(task *ScheduledTask) {
-
-		if task.isAsync {
-			panic("async task does not support this option")
-		}
-
-		if delay >= 0 {
-			task.fixedRate = -1
-			task.fixedDelay = delay
-		}
-
-	}
-}
-
-func WithFixedRate(period time.Duration) Option {
-	return func(task *ScheduledTask) {
-
-		if period >= 0 {
-			task.fixedDelay = -1
-			task.fixedRate = period
-		}
-
-	}
-}
-
-func WithLocation(location string) Option {
-	return func(task *ScheduledTask) {
-		loadedLocation, err := time.LoadLocation(location)
-
-		if err != nil {
-			panic(err)
-		}
-
-		task.location = loadedLocation
-	}
-}
-
 type Scheduler interface {
-	Schedule(ctx context.Context, task Task, options ...Option)
+	Start()
+	IsActive() bool
+	Schedule(ctx context.Context, task Task, options ...Option) ScheduledTask
+	ScheduleWithCron(ctx context.Context, task Task, expression string, options ...Option) ScheduledTask
+	ScheduleWithFixedDelay(ctx context.Context, task Task, delay time.Duration, options ...Option) ScheduledTask
+	ScheduleWithFixedRate(ctx context.Context, task Task, period time.Duration, options ...Option) ScheduledTask
 	Terminate()
 }
 
 type SimpleScheduler struct {
-	wg              *sync.WaitGroup
-	cancelFunctions []context.CancelFunc
+	isActive          bool
+	mu                sync.RWMutex
+	timer             *time.Timer
+	nextTaskId        int
+	newTaskChannel    chan *RunnableTask
+	removeTaskChannel chan int
+	tasks             Tasks
+	wg                *sync.WaitGroup
+	cancelFunctions   []context.CancelFunc
 }
 
 func NewScheduler() Scheduler {
 	return &SimpleScheduler{
+		isActive:        false,
+		mu:              sync.RWMutex{},
+		nextTaskId:      0,
+		newTaskChannel:  make(chan *RunnableTask),
+		tasks:           make(Tasks, 0),
 		wg:              &sync.WaitGroup{},
 		cancelFunctions: make([]context.CancelFunc, 0),
 	}
 }
 
-func (scheduler *SimpleScheduler) Schedule(ctx context.Context, task Task, options ...Option) {
-	scheduledTask := NewScheduledTask(task, options...)
-	scheduledTask.Execute(nil)
+func (scheduler *SimpleScheduler) Start() {
+	scheduler.mu.Lock()
+	defer scheduler.mu.Unlock()
+
+	if scheduler.isActive {
+		return
+	}
+
+	scheduler.isActive = true
+
+	go scheduler.run()
+}
+
+func (scheduler *SimpleScheduler) IsActive() bool {
+	scheduler.mu.Lock()
+	defer scheduler.mu.Unlock()
+	return scheduler.isActive
+}
+
+func (scheduler *SimpleScheduler) Schedule(ctx context.Context, task Task, options ...Option) ScheduledTask {
+	scheduler.mu.Lock()
+	defer scheduler.mu.Unlock()
+
+	scheduler.nextTaskId++
+	scheduledTask := newCronTask(scheduler.nextTaskId, task, options...)
+
+	return scheduledTask
+	/*scheduledTask.Execute(nil)
 
 	ctxWithCancel, cancel := context.WithCancel(ctx)
 	scheduler.wg.Add(1)
 
 	scheduler.cancelFunctions = append(scheduler.cancelFunctions, cancel)
 	go scheduler.execute(ctxWithCancel, task, 1*time.Second)
+	*/
+}
+
+func (scheduler *SimpleScheduler) ScheduleWithCron(ctx context.Context, task Task, expression string, options ...Option) ScheduledTask {
+	scheduler.mu.Lock()
+	defer scheduler.mu.Unlock()
+
+	scheduler.nextTaskId++
+	scheduledTask := newCronTask(scheduler.nextTaskId, task, options...)
+
+	return scheduledTask
+}
+
+func (scheduler *SimpleScheduler) ScheduleWithFixedDelay(ctx context.Context, task Task, delay time.Duration, options ...Option) ScheduledTask {
+	scheduler.mu.Lock()
+	defer scheduler.mu.Unlock()
+
+	scheduler.nextTaskId++
+	scheduledTask := newFixedDelayTask(scheduler.nextTaskId, task, options...)
+
+	return scheduledTask
+}
+
+func (scheduler *SimpleScheduler) ScheduleWithFixedRate(ctx context.Context, task Task, period time.Duration, options ...Option) ScheduledTask {
+	scheduler.mu.Lock()
+	defer scheduler.mu.Unlock()
+
+	scheduler.nextTaskId++
+	scheduledTask := newFixedRateTask(scheduler.nextTaskId, task, options...)
+
+	return scheduledTask
+}
+
+func (scheduler *SimpleScheduler) addTask(scheduledTask *RunnableTask) {
+	if scheduler.isActive {
+		scheduler.newTaskChannel <- scheduledTask
+	} else {
+		scheduler.tasks = append(scheduler.tasks, scheduledTask)
+	}
 }
 
 func (scheduler *SimpleScheduler) Terminate() {
+	scheduler.mu.Lock()
+	defer scheduler.mu.Unlock()
+
 	for _, cancelFunction := range scheduler.cancelFunctions {
 		cancelFunction()
 	}
 
 	scheduler.wg.Wait()
+}
+
+func (scheduler *SimpleScheduler) run() {
+
+	now := time.Now()
+	scheduler.tasks.UpdateNextExecutionTimes(now)
+
+	for {
+		scheduler.tasks.SortByNextExecutionTime()
+
+		if scheduler.timer == nil {
+			scheduler.timer = time.NewTimer(0)
+		} else {
+
+			if scheduler.tasks.IsEmpty() {
+				scheduler.timer.Stop()
+			} else {
+				scheduler.timer.Reset(0)
+			}
+
+		}
+
+		for {
+
+			select {
+			case now = <-scheduler.timer.C:
+
+			case newTask := <-scheduler.newTaskChannel:
+				scheduler.timer.Stop()
+				//newTask.updateNextExecutionTime(time.Now())
+				scheduler.tasks = append(scheduler.tasks, newTask)
+			case taskId := <-scheduler.removeTaskChannel:
+				scheduler.timer.Stop()
+				now = time.Now()
+				scheduler.removeTask(taskId)
+			}
+
+			break
+		}
+	}
+}
+
+func (scheduler *SimpleScheduler) removeTask(taskId int) {
+	taskIndex := -1
+
+	for index, task := range scheduler.tasks {
+		if task.id != taskId {
+			continue
+		}
+
+		taskIndex = index
+	}
+
+	if taskIndex == -1 {
+		return
+	}
+
+	scheduler.tasks = append(scheduler.tasks[:taskIndex], scheduler.tasks[taskIndex+1:]...)
 }
 
 func (scheduler *SimpleScheduler) execute(ctx context.Context, task Task, interval time.Duration) {
