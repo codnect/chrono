@@ -14,27 +14,35 @@ type ScheduledTask interface {
 }
 
 type RunnableTask struct {
-	id        int
-	task      Task
-	startTime time.Time
-	location  *time.Location
+	id             int
+	task           Task
+	startTime      time.Time
+	location       *time.Location
+	trigger        Trigger
+	triggerContext *SimpleTriggerContext
 }
 
-func newRunnableTask(id int, task Task, options ...Option) *RunnableTask {
+func NewRunnableTask(id int, task Task, options ...Option) RunnableTask {
 	runnableTask := &RunnableTask{
-		id:   id,
-		task: task,
+		id:        id,
+		task:      task,
+		startTime: time.Time{},
+		location:  time.Local,
 	}
 
 	for _, option := range options {
 		option(runnableTask)
 	}
 
-	return runnableTask
+	return *runnableTask
 }
 
-func (task *RunnableTask) update() {
+func (task *RunnableTask) Cancel() time.Time {
+	return time.Time{}
+}
 
+func (task *RunnableTask) NextExecutionTime() time.Time {
+	return task.trigger.NextExecutionTime(task.triggerContext)
 }
 
 type Option func(task *RunnableTask)
@@ -57,89 +65,6 @@ func WithLocation(location string) Option {
 	}
 }
 
-type OneShotTask struct {
-	*RunnableTask
-	delay time.Duration
-}
-
-func newOneShotTask(id int, task Task, options ...Option) *OneShotTask {
-	return &OneShotTask{
-		RunnableTask: newRunnableTask(id, task, options...),
-	}
-}
-
-func (task *OneShotTask) Cancel() {
-
-}
-
-func (task *OneShotTask) NextExecutionTime() time.Time {
-	return time.Time{}
-}
-
-type FixedDelayTask struct {
-	*RunnableTask
-	delay time.Duration
-}
-
-func newFixedDelayTask(id int, task Task, options ...Option) *FixedDelayTask {
-	return &FixedDelayTask{
-		RunnableTask: newRunnableTask(id, task, options...),
-	}
-}
-
-func (task *FixedDelayTask) Cancel() {
-
-}
-
-func (task *FixedDelayTask) NextExecutionTime() time.Time {
-	return time.Time{}
-}
-
-type FixedRateTask struct {
-	*RunnableTask
-	period time.Duration
-}
-
-func newFixedRateTask(id int, task Task, options ...Option) *FixedRateTask {
-	return &FixedRateTask{
-		RunnableTask: newRunnableTask(id, task, options...),
-	}
-}
-
-func (task *FixedRateTask) Cancel() {
-
-}
-
-func (task *FixedRateTask) NextExecutionTime() time.Time {
-	return time.Time{}
-}
-
-type CronTask struct {
-	*RunnableTask
-}
-
-func newCronTask(id int, task Task, options ...Option) *CronTask {
-	return &CronTask{
-		RunnableTask: newRunnableTask(id, task, options...),
-	}
-}
-
-func (task *CronTask) Cancel() {
-
-}
-
-func (task *CronTask) NextExecutionTime() time.Time {
-	return time.Time{}
-}
-
-func (task *RunnableTask) updateNextExecutionTime(t time.Time) {
-
-}
-
-func (task *RunnableTask) execute(ctx context.Context) {
-
-}
-
 type Tasks []*RunnableTask
 
 func (tasks Tasks) IsEmpty() bool {
@@ -148,9 +73,9 @@ func (tasks Tasks) IsEmpty() bool {
 
 func (tasks Tasks) UpdateNextExecutionTimes(t time.Time) {
 
-	for _, task := range tasks {
-		task.updateNextExecutionTime(t)
-	}
+	//for _, task := range tasks {
+	//task.updateNextExecutionTime(t)
+	//}
 
 }
 

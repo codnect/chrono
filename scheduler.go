@@ -9,10 +9,10 @@ import (
 type Scheduler interface {
 	Start()
 	IsActive() bool
-	Schedule(ctx context.Context, task Task, options ...Option) ScheduledTask
-	ScheduleWithCron(ctx context.Context, task Task, expression string, options ...Option) ScheduledTask
-	ScheduleWithFixedDelay(ctx context.Context, task Task, delay time.Duration, options ...Option) ScheduledTask
-	ScheduleWithFixedRate(ctx context.Context, task Task, period time.Duration, options ...Option) ScheduledTask
+	Schedule(task Task, options ...Option) ScheduledTask
+	ScheduleWithCron(task Task, expression string, options ...Option) ScheduledTask
+	ScheduleWithFixedDelay(task Task, delay time.Duration, options ...Option) ScheduledTask
+	ScheduleWithFixedRate(task Task, period time.Duration, options ...Option) ScheduledTask
 	Terminate()
 }
 
@@ -59,50 +59,57 @@ func (scheduler *SimpleScheduler) IsActive() bool {
 	return scheduler.isActive
 }
 
-func (scheduler *SimpleScheduler) Schedule(ctx context.Context, task Task, options ...Option) ScheduledTask {
+func (scheduler *SimpleScheduler) Schedule(task Task, options ...Option) ScheduledTask {
 	scheduler.mu.Lock()
 	defer scheduler.mu.Unlock()
 
 	scheduler.nextTaskId++
-	scheduledTask := newCronTask(scheduler.nextTaskId, task, options...)
+	scheduledTask := NewRunnableTask(scheduler.nextTaskId, task, options...)
 
 	return scheduledTask
-	/*scheduledTask.Execute(nil)
+	/*
 
-	ctxWithCancel, cancel := context.WithCancel(ctx)
-	scheduler.wg.Add(1)
+		ctxWithCancel, cancel := context.WithCancel(ctx)
+		scheduler.wg.Add(1)
 
-	scheduler.cancelFunctions = append(scheduler.cancelFunctions, cancel)
-	go scheduler.execute(ctxWithCancel, task, 1*time.Second)
+		scheduler.cancelFunctions = append(scheduler.cancelFunctions, cancel)
+		go scheduler.execute(ctxWithCancel, task, 1*time.Second)
 	*/
 }
 
-func (scheduler *SimpleScheduler) ScheduleWithCron(ctx context.Context, task Task, expression string, options ...Option) ScheduledTask {
+func (scheduler *SimpleScheduler) ScheduleWithCron(task Task, expression string, options ...Option) ScheduledTask {
 	scheduler.mu.Lock()
 	defer scheduler.mu.Unlock()
 
 	scheduler.nextTaskId++
-	scheduledTask := newCronTask(scheduler.nextTaskId, task, options...)
+	scheduledTask := NewRunnableTask(scheduler.nextTaskId, task, options...)
+	scheduledTask.trigger = NewCronTrigger(expression)
 
 	return scheduledTask
 }
 
-func (scheduler *SimpleScheduler) ScheduleWithFixedDelay(ctx context.Context, task Task, delay time.Duration, options ...Option) ScheduledTask {
+func (scheduler *SimpleScheduler) ScheduleWithFixedDelay(task Task, delay time.Duration, options ...Option) ScheduledTask {
 	scheduler.mu.Lock()
 	defer scheduler.mu.Unlock()
 
 	scheduler.nextTaskId++
-	scheduledTask := newFixedDelayTask(scheduler.nextTaskId, task, options...)
+	scheduledTask := NewRunnableTask(scheduler.nextTaskId, task, options...)
+
+	initialDelay := time.Now().In(scheduledTask.location).Sub(scheduledTask.startTime.In(scheduledTask.location))
+	scheduledTask.trigger = NewPeriodicTrigger(delay, initialDelay, false)
 
 	return scheduledTask
 }
 
-func (scheduler *SimpleScheduler) ScheduleWithFixedRate(ctx context.Context, task Task, period time.Duration, options ...Option) ScheduledTask {
+func (scheduler *SimpleScheduler) ScheduleWithFixedRate(task Task, period time.Duration, options ...Option) ScheduledTask {
 	scheduler.mu.Lock()
 	defer scheduler.mu.Unlock()
 
 	scheduler.nextTaskId++
-	scheduledTask := newFixedRateTask(scheduler.nextTaskId, task, options...)
+	scheduledTask := NewRunnableTask(scheduler.nextTaskId, task, options...)
+
+	initialDelay := time.Now().In(scheduledTask.location).Sub(scheduledTask.startTime.In(scheduledTask.location))
+	scheduledTask.trigger = NewPeriodicTrigger(period, initialDelay, true)
 
 	return scheduledTask
 }

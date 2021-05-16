@@ -68,23 +68,20 @@ var cronFields = []CronField{
 	DayOfWeek,
 }
 
-type Cron struct {
+type CronExpression struct {
 	Second     uint64
 	Minute     uint64
 	Hour       uint64
 	DayOfMonth uint64
 	Month      uint64
 	DayOfWeek  uint64
-	Location   *time.Location
 }
 
-func NewCron() *Cron {
-	return &Cron{
-		Location: time.Local,
-	}
+func NewCron() *CronExpression {
+	return &CronExpression{}
 }
 
-func (cron *Cron) Set(cronField CronField, value uint64) {
+func (cron *CronExpression) set(cronField CronField, value uint64) {
 
 	switch cronField.Index {
 	case Second.Index:
@@ -103,24 +100,12 @@ func (cron *Cron) Set(cronField CronField, value uint64) {
 
 }
 
-func (cron *Cron) NextTime(t time.Time) time.Time {
-	location := cron.Location
+func (cron *CronExpression) NextTime(t time.Time) time.Time {
 
-	if location == nil {
-		location = time.Local
-	}
-
-	if location == time.Local {
-		location = t.Location()
-	} else {
-		t = t.In(cron.Location)
-	}
-
-	originLocation := t.Location()
+	location := t.Location()
+	added := false
 
 	t = t.Add(1*time.Second - time.Duration(t.Nanosecond())*time.Nanosecond)
-
-	added := false
 
 repeat:
 
@@ -198,10 +183,10 @@ repeat:
 		}
 	}
 
-	return t.In(originLocation)
+	return t
 }
 
-func (cron *Cron) matches(t time.Time) bool {
+func (cron *CronExpression) matches(t time.Time) bool {
 
 	dayOfMonthMatch := 1<<uint(t.Day())&cron.DayOfMonth > 0
 	dayOfWeekMatch := 1<<uint(t.Weekday())&cron.DayOfWeek > 0
@@ -213,8 +198,6 @@ func (cron *Cron) matches(t time.Time) bool {
 	return dayOfMonthMatch || dayOfWeekMatch
 }
 
-var cronParser = NewCronParser()
-
 type CronParser struct {
 }
 
@@ -222,7 +205,7 @@ func NewCronParser() *CronParser {
 	return &CronParser{}
 }
 
-func (parser *CronParser) Parse(expression string) (*Cron, error) {
+func (parser *CronParser) Parse(expression string) (*CronExpression, error) {
 
 	if len(expression) == 0 {
 		return nil, errors.New("cron expression must not be empty")
@@ -246,7 +229,7 @@ func (parser *CronParser) Parse(expression string) (*Cron, error) {
 			return nil, fmt.Errorf("cron expression is not valid : %s, message : %s", expression, err.Error())
 		}
 
-		cron.Set(cronField, value)
+		cron.set(cronField, value)
 	}
 
 	return cron, nil
@@ -259,7 +242,7 @@ func (parser *CronParser) parseField(cronField CronField, fieldExpression string
 
 	for _, value := range values {
 
-		bits, err := cronParser.getBitsValue(cronField, value)
+		bits, err := parser.getBitsValue(cronField, value)
 
 		if err != nil {
 			return fieldValue, err
@@ -295,7 +278,7 @@ func (parser *CronParser) getBitsValue(cronField CronField, value string) (uint6
 		max = cronField.Max
 		everyFlag = CronEveryFlag
 	} else {
-		min, max, err = cronParser.getRanges(minAndMax, cronField.Values)
+		min, max, err = parser.getRanges(minAndMax, cronField.Values)
 
 		if err != nil {
 			return 0, err
