@@ -8,23 +8,67 @@ import (
 
 type Task func(ctx context.Context)
 
-type ScheduledTask interface {
-	Cancel()
-	NextExecutionTime() time.Time
+type ScheduledTask struct {
+	id          int
+	task        Task
+	triggerTime time.Time
+	period      time.Duration
 }
 
-type RunnableTask struct {
-	id             int
-	task           Task
-	startTime      time.Time
-	location       *time.Location
-	trigger        Trigger
-	triggerContext *SimpleTriggerContext
+func NewScheduledTask(task Task, triggerTime time.Time, period time.Duration) *ScheduledTask {
+	if period < 0 {
+		period = 0
+	}
+
+	return &ScheduledTask{
+		task:        task,
+		triggerTime: triggerTime,
+		period:      period,
+	}
 }
 
-func NewRunnableTask(id int, task Task, options ...Option) RunnableTask {
-	runnableTask := &RunnableTask{
-		id:        id,
+func (scheduledTask *ScheduledTask) GetDelay() time.Duration {
+	return scheduledTask.triggerTime.Sub(time.Now())
+}
+
+func (scheduledTask *ScheduledTask) IsPeriodic() bool {
+	return scheduledTask.period != 0
+}
+
+type ScheduledTaskQueue []*ScheduledTask
+
+func (queue ScheduledTaskQueue) IsEmpty() bool {
+	return queue.Len() == 0
+}
+
+func (queue ScheduledTaskQueue) Len() int {
+	return len(queue)
+}
+
+func (queue ScheduledTaskQueue) Swap(i, j int) {
+	queue[i], queue[j] = queue[j], queue[i]
+}
+
+func (queue ScheduledTaskQueue) Less(i, j int) bool {
+	return queue[i].triggerTime.Before(queue[j].triggerTime)
+}
+
+func (queue ScheduledTaskQueue) SorByTriggerTime() {
+	sort.Sort(queue)
+}
+
+type SchedulerTask struct {
+	task      Task
+	startTime time.Time
+	location  *time.Location
+}
+
+func NewSchedulerTask(task Task, options ...Option) *SchedulerTask {
+	if task == nil {
+		panic("task cannot be nil")
+	}
+
+	runnableTask := &SchedulerTask{
 		task:      task,
 		startTime: time.Time{},
 		location:  time.Local,
@@ -34,27 +78,19 @@ func NewRunnableTask(id int, task Task, options ...Option) RunnableTask {
 		option(runnableTask)
 	}
 
-	return *runnableTask
+	return runnableTask
 }
 
-func (task *RunnableTask) Cancel() time.Time {
-	return time.Time{}
-}
+type Option func(task *SchedulerTask)
 
-func (task *RunnableTask) NextExecutionTime() time.Time {
-	return task.trigger.NextExecutionTime(task.triggerContext)
-}
-
-type Option func(task *RunnableTask)
-
-func WithStartTime(startTime time.Time) Option {
-	return func(task *RunnableTask) {
-		task.startTime = startTime
+func WithStartTime(startTime TimeFunction) Option {
+	return func(task *SchedulerTask) {
+		task.startTime = startTime()
 	}
 }
 
 func WithLocation(location string) Option {
-	return func(task *RunnableTask) {
+	return func(task *SchedulerTask) {
 		loadedLocation, err := time.LoadLocation(location)
 
 		if err != nil {
@@ -65,32 +101,26 @@ func WithLocation(location string) Option {
 	}
 }
 
-type Tasks []*RunnableTask
-
-func (tasks Tasks) IsEmpty() bool {
-	return tasks.Len() == 0
+type ReschedulableTask struct {
+	executor ScheduledExecutor
+	trigger  Trigger
 }
 
-func (tasks Tasks) UpdateNextExecutionTimes(t time.Time) {
+func NewReschedulableTask(executor ScheduledExecutor, trigger Trigger) *ReschedulableTask {
+	if executor == nil {
+		panic("executor cannot be nil")
+	}
 
-	//for _, task := range tasks {
-	//task.updateNextExecutionTime(t)
-	//}
+	if trigger != nil {
+		panic("trigger cannot be nil")
+	}
 
+	return &ReschedulableTask{
+		executor,
+		trigger,
+	}
 }
 
-func (tasks Tasks) SortByNextExecutionTime() {
-	sort.Sort(tasks)
-}
-
-func (tasks Tasks) Len() int {
-	return len(tasks)
-}
-
-func (tasks Tasks) Swap(i, j int) {
-	tasks[i], tasks[j] = tasks[j], tasks[i]
-}
-
-func (tasks Tasks) Less(i, j int) bool {
-	return false
+func (task *ReschedulableTask) Schedule() *ScheduledTask {
+	return nil
 }

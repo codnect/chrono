@@ -10,17 +10,26 @@ type TriggerContext interface {
 }
 
 type SimpleTriggerContext struct {
+	clockTime                  time.Time
 	lastCompletionTime         time.Time
 	lastExecutionTime          time.Time
 	lastScheduledExecutionTime time.Time
 }
 
 func NewSimpleTriggerContext() *SimpleTriggerContext {
-	return &SimpleTriggerContext{}
+	return &SimpleTriggerContext{
+		clockTime: time.Now(),
+	}
+}
+
+func (ctx *SimpleTriggerContext) update(lastCompletionTime time.Time, lastExecutionTime time.Time, lastScheduledExecutionTime time.Time) {
+	ctx.lastCompletionTime = lastCompletionTime
+	ctx.lastExecutionTime = lastExecutionTime
+	ctx.lastScheduledExecutionTime = lastScheduledExecutionTime
 }
 
 func (ctx *SimpleTriggerContext) GetTime() time.Time {
-	return time.Time{}
+	return ctx.clockTime
 }
 
 func (ctx *SimpleTriggerContext) LastCompletionTime() time.Time {
