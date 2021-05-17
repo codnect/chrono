@@ -16,12 +16,13 @@ type ScheduledTask struct {
 	fixedRate   bool
 }
 
-func NewScheduledTask(task Task, triggerTime time.Time, period time.Duration, fixedRate bool) *ScheduledTask {
+func NewScheduledTask(id int, task Task, triggerTime time.Time, period time.Duration, fixedRate bool) *ScheduledTask {
 	if period < 0 {
 		period = 0
 	}
 
 	return &ScheduledTask{
+		id:          id,
 		task:        task,
 		triggerTime: triggerTime,
 		period:      period,
