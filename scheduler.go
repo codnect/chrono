@@ -30,25 +30,25 @@ func NewScheduler(executor ScheduledExecutor) Scheduler {
 }
 
 func (scheduler *SimpleScheduler) Schedule(task Task, options ...Option) *ScheduledTask {
-	schedulerTask := NewSchedulerTask(task, options...)
+	//schedulerTask := NewSchedulerTask(task, options...)
 	return nil
 }
 
 func (scheduler *SimpleScheduler) ScheduleWithCron(task Task, expression string, options ...Option) *ScheduledTask {
-	schedulerTask := NewSchedulerTask(task, options...)
+	//	schedulerTask := NewSchedulerTask(task, options...)
 	return nil
 }
 
 func (scheduler *SimpleScheduler) ScheduleWithFixedDelay(task Task, delay time.Duration, options ...Option) *ScheduledTask {
-	schedulerTask := NewSchedulerTask(task, options...)
+	//schedulerTask := NewSchedulerTask(task, options...)
 	return nil
 }
 
 func (scheduler *SimpleScheduler) ScheduleAtFixedRate(task Task, period time.Duration, options ...Option) *ScheduledTask {
 	schedulerTask := NewSchedulerTask(task, options...)
 
-	trigger := NewPeriodicTrigger(period, 0, true)
-	reschedulableTask := NewReschedulableTask(scheduler.executor, trigger)
+	//	trigger := NewPeriodicTrigger(period, 0, true)
+	//reschedulableTask := NewReschedulableTask(scheduler.executor, trigger)
 
 	return scheduler.executor.ScheduleAtWithRate(schedulerTask.task, 0, period)
 }

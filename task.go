@@ -13,9 +13,10 @@ type ScheduledTask struct {
 	task        Task
 	triggerTime time.Time
 	period      time.Duration
+	fixedRate   bool
 }
 
-func NewScheduledTask(task Task, triggerTime time.Time, period time.Duration) *ScheduledTask {
+func NewScheduledTask(task Task, triggerTime time.Time, period time.Duration, fixedRate bool) *ScheduledTask {
 	if period < 0 {
 		period = 0
 	}
@@ -24,6 +25,7 @@ func NewScheduledTask(task Task, triggerTime time.Time, period time.Duration) *S
 		task:        task,
 		triggerTime: triggerTime,
 		period:      period,
+		fixedRate:   fixedRate,
 	}
 }
 
@@ -33,6 +35,10 @@ func (scheduledTask *ScheduledTask) GetDelay() time.Duration {
 
 func (scheduledTask *ScheduledTask) IsPeriodic() bool {
 	return scheduledTask.period != 0
+}
+
+func (scheduledTask *ScheduledTask) IsFixedRate() bool {
+	return scheduledTask.fixedRate
 }
 
 type ScheduledTaskQueue []*ScheduledTask
