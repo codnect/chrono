@@ -16,7 +16,6 @@ type ScheduledTaskExecutor struct {
 	nextSequenceMu        sync.RWMutex
 	timer                 *time.Timer
 	taskQueue             ScheduledTaskQueue
-	taskQueueMu           sync.RWMutex
 	newTaskChannel        chan *ScheduledTask
 	removeTaskChannel     chan *ScheduledTask
 	rescheduleTaskChannel chan *ScheduledTask
@@ -103,8 +102,6 @@ func (executor *ScheduledTaskExecutor) run() {
 			case clock := <-executor.timer.C:
 				executor.timer.Stop()
 
-				executor.taskQueueMu.Lock()
-
 				taskIndex := -1
 				for index, scheduledTask := range executor.taskQueue {
 
@@ -126,22 +123,14 @@ func (executor *ScheduledTaskExecutor) run() {
 					executor.taskQueue = executor.taskQueue[taskIndex:]
 				}
 
-				executor.taskQueueMu.Unlock()
 			case newScheduledTask := <-executor.newTaskChannel:
 				executor.timer.Stop()
-
-				executor.taskQueueMu.Lock()
 				executor.taskQueue = append(executor.taskQueue, newScheduledTask)
-				executor.taskQueueMu.Unlock()
 			case rescheduledTask := <-executor.rescheduleTaskChannel:
 				executor.timer.Stop()
-				executor.taskQueueMu.Lock()
 				executor.taskQueue = append(executor.taskQueue, rescheduledTask)
-				executor.taskQueueMu.Unlock()
 			case task := <-executor.removeTaskChannel:
 				executor.timer.Stop()
-
-				executor.taskQueueMu.Lock()
 
 				taskIndex := -1
 				for index, scheduledTask := range executor.taskQueue {
@@ -152,7 +141,6 @@ func (executor *ScheduledTaskExecutor) run() {
 				}
 
 				executor.taskQueue = append(executor.taskQueue[:taskIndex], executor.taskQueue[taskIndex+1:]...)
-				executor.taskQueueMu.Unlock()
 			}
 
 			break
