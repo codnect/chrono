@@ -9,6 +9,7 @@ type ScheduledExecutor interface {
 	Schedule(task Task, delay time.Duration) *ScheduledTask
 	ScheduleWithFixedDelay(task Task, initialDelay time.Duration, delay time.Duration) *ScheduledTask
 	ScheduleAtWithRate(task Task, initialDelay time.Duration, period time.Duration) *ScheduledTask
+	Shutdown()
 }
 
 type ScheduledTaskExecutor struct {
@@ -20,15 +21,25 @@ type ScheduledTaskExecutor struct {
 	removeTaskChannel     chan *ScheduledTask
 	rescheduleTaskChannel chan *ScheduledTask
 	taskWaitGroup         sync.WaitGroup
+	taskRunner            TaskRunner
 }
 
-func NewScheduledTaskExecutor() *ScheduledTaskExecutor {
+func NewDefaultScheduledExecutor() ScheduledExecutor {
+	return NewScheduledTaskExecutor(NewDefaultTaskRunner())
+}
+
+func NewScheduledTaskExecutor(runner TaskRunner) *ScheduledTaskExecutor {
+	if runner == nil {
+		runner = NewDefaultTaskRunner()
+	}
+
 	executor := &ScheduledTaskExecutor{
 		timer:                 time.NewTimer(1 * time.Hour),
 		taskQueue:             make(ScheduledTaskQueue, 0),
 		newTaskChannel:        make(chan *ScheduledTask),
 		rescheduleTaskChannel: make(chan *ScheduledTask),
 		removeTaskChannel:     make(chan *ScheduledTask),
+		taskRunner:            runner,
 	}
 
 	executor.timer.Stop()
@@ -43,8 +54,11 @@ func (executor *ScheduledTaskExecutor) Schedule(task Task, delay time.Duration) 
 		panic("task cannot be nil")
 	}
 
+	executor.nextSequenceMu.Lock()
 	executor.nextSequence++
 	scheduledTask := NewScheduledTask(executor.nextSequence, task, executor.calculateTriggerTime(delay), 0, false)
+	executor.nextSequenceMu.Unlock()
+
 	executor.addNewTask(scheduledTask)
 
 	return scheduledTask
@@ -55,8 +69,11 @@ func (executor *ScheduledTaskExecutor) ScheduleWithFixedDelay(task Task, initial
 		panic("task cannot be nil")
 	}
 
+	executor.nextSequenceMu.Lock()
 	executor.nextSequence++
 	scheduledTask := NewScheduledTask(executor.nextSequence, task, executor.calculateTriggerTime(initialDelay), delay, false)
+	executor.nextSequenceMu.Unlock()
+
 	executor.addNewTask(scheduledTask)
 
 	return scheduledTask
@@ -67,11 +84,18 @@ func (executor *ScheduledTaskExecutor) ScheduleAtWithRate(task Task, initialDela
 		panic("task cannot be nil")
 	}
 
+	executor.nextSequenceMu.Lock()
 	executor.nextSequence++
 	scheduledTask := NewScheduledTask(executor.nextSequence, task, executor.calculateTriggerTime(initialDelay), period, true)
+	executor.nextSequenceMu.Unlock()
+
 	executor.addNewTask(scheduledTask)
 
 	return scheduledTask
+}
+
+func (executor *ScheduledTaskExecutor) Shutdown() {
+
 }
 
 func (executor *ScheduledTaskExecutor) calculateTriggerTime(delay time.Duration) time.Time {
@@ -106,9 +130,10 @@ func (executor *ScheduledTaskExecutor) run() {
 				for index, scheduledTask := range executor.taskQueue {
 
 					if scheduledTask.triggerTime.After(clock) || scheduledTask.triggerTime.IsZero() {
-						taskIndex = index
 						break
 					}
+
+					taskIndex = index
 
 					if scheduledTask.IsPeriodic() && scheduledTask.IsFixedRate() {
 						scheduledTask.triggerTime = scheduledTask.triggerTime.Add(scheduledTask.period)
@@ -117,12 +142,7 @@ func (executor *ScheduledTaskExecutor) run() {
 					executor.startTask(scheduledTask)
 				}
 
-				if taskIndex == -1 {
-					executor.taskQueue = executor.taskQueue[executor.taskQueue.Len():]
-				} else {
-					executor.taskQueue = executor.taskQueue[taskIndex:]
-				}
-
+				executor.taskQueue = executor.taskQueue[taskIndex+1:]
 			case newScheduledTask := <-executor.newTaskChannel:
 				executor.timer.Stop()
 				executor.taskQueue = append(executor.taskQueue, newScheduledTask)
@@ -167,6 +187,6 @@ func (executor *ScheduledTaskExecutor) startTask(scheduledTask *ScheduledTask) {
 			executor.rescheduleTaskChannel <- scheduledTask
 		}
 
-		scheduledTask.task(nil)
+		executor.taskRunner.Run(scheduledTask.task)
 	}()
 }

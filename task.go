@@ -6,7 +6,68 @@ import (
 	"time"
 )
 
-type Task func(ctx context.Context)
+type Task interface {
+	Run(ctx context.Context)
+}
+
+type SchedulerTask struct {
+	task      Task
+	startTime time.Time
+	location  *time.Location
+}
+
+func NewSchedulerTask(task Task, options ...Option) *SchedulerTask {
+	if task == nil {
+		panic("task cannot be nil")
+	}
+
+	runnableTask := &SchedulerTask{
+		task:      task,
+		startTime: time.Time{},
+		location:  time.Local,
+	}
+
+	for _, option := range options {
+		option(runnableTask)
+	}
+
+	return runnableTask
+}
+
+func (task *SchedulerTask) GetInitialDelay() time.Duration {
+	if task.startTime.IsZero() {
+		return 0
+	}
+
+	now := time.Now().In(task.location)
+	originalStartTime := task.startTime.In(task.location)
+
+	if now.After(originalStartTime) {
+		return 0
+	}
+
+	return originalStartTime.Sub(now)
+}
+
+type Option func(task *SchedulerTask)
+
+func WithStartTime(startTime TimeFunction) Option {
+	return func(task *SchedulerTask) {
+		task.startTime = startTime()
+	}
+}
+
+func WithLocation(location string) Option {
+	return func(task *SchedulerTask) {
+		loadedLocation, err := time.LoadLocation(location)
+
+		if err != nil {
+			panic(err)
+		}
+
+		task.location = loadedLocation
+	}
+}
 
 type ScheduledTask struct {
 	id          int
@@ -62,50 +123,6 @@ func (queue ScheduledTaskQueue) Less(i, j int) bool {
 
 func (queue ScheduledTaskQueue) SorByTriggerTime() {
 	sort.Sort(queue)
-}
-
-type SchedulerTask struct {
-	task      Task
-	startTime time.Time
-	location  *time.Location
-}
-
-func NewSchedulerTask(task Task, options ...Option) *SchedulerTask {
-	if task == nil {
-		panic("task cannot be nil")
-	}
-
-	runnableTask := &SchedulerTask{
-		task:      task,
-		startTime: time.Time{},
-		location:  time.Local,
-	}
-
-	for _, option := range options {
-		option(runnableTask)
-	}
-
-	return runnableTask
-}
-
-type Option func(task *SchedulerTask)
-
-func WithStartTime(startTime TimeFunction) Option {
-	return func(task *SchedulerTask) {
-		task.startTime = startTime()
-	}
-}
-
-func WithLocation(location string) Option {
-	return func(task *SchedulerTask) {
-		loadedLocation, err := time.LoadLocation(location)
-
-		if err != nil {
-			panic(err)
-		}
-
-		task.location = loadedLocation
-	}
 }
 
 type ReschedulableTask struct {

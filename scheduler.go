@@ -19,7 +19,7 @@ type SimpleScheduler struct {
 func NewScheduler(executor ScheduledExecutor) Scheduler {
 
 	if executor == nil {
-		executor = NewScheduledTaskExecutor()
+		executor = NewDefaultScheduledExecutor()
 	}
 
 	scheduler := &SimpleScheduler{
@@ -30,27 +30,23 @@ func NewScheduler(executor ScheduledExecutor) Scheduler {
 }
 
 func (scheduler *SimpleScheduler) Schedule(task Task, options ...Option) *ScheduledTask {
-	//schedulerTask := NewSchedulerTask(task, options...)
-	return nil
+	schedulerTask := NewSchedulerTask(task, options...)
+	return scheduler.executor.Schedule(task, schedulerTask.GetInitialDelay())
 }
 
 func (scheduler *SimpleScheduler) ScheduleWithCron(task Task, expression string, options ...Option) *ScheduledTask {
-	//	schedulerTask := NewSchedulerTask(task, options...)
-	return nil
+	schedulerTask := NewSchedulerTask(task, options...)
+	return scheduler.executor.Schedule(task, schedulerTask.GetInitialDelay())
 }
 
 func (scheduler *SimpleScheduler) ScheduleWithFixedDelay(task Task, delay time.Duration, options ...Option) *ScheduledTask {
-	//schedulerTask := NewSchedulerTask(task, options...)
-	return nil
+	schedulerTask := NewSchedulerTask(task, options...)
+	return scheduler.executor.ScheduleWithFixedDelay(schedulerTask.task, schedulerTask.GetInitialDelay(), delay)
 }
 
 func (scheduler *SimpleScheduler) ScheduleAtFixedRate(task Task, period time.Duration, options ...Option) *ScheduledTask {
 	schedulerTask := NewSchedulerTask(task, options...)
-
-	//	trigger := NewPeriodicTrigger(period, 0, true)
-	//reschedulableTask := NewReschedulableTask(scheduler.executor, trigger)
-
-	return scheduler.executor.ScheduleAtWithRate(schedulerTask.task, 0, period)
+	return scheduler.executor.ScheduleAtWithRate(schedulerTask.task, schedulerTask.GetInitialDelay(), period)
 }
 
 func (scheduler *SimpleScheduler) Terminate() {
