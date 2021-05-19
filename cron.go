@@ -30,24 +30,6 @@ type fieldType struct {
 	MaxValue int
 }
 
-func (fieldType fieldType) checkValidValue(value string) int {
-	result, err := strconv.Atoi(value)
-
-	if err != nil {
-		panic(err)
-	}
-
-	if fieldType.Field == cronFieldDayOfWeek && result == 0 {
-		return result
-	}
-
-	if result >= fieldType.MinValue && result <= fieldType.MaxValue {
-		return result
-	}
-
-	panic("value is not valid")
-}
-
 var (
 	second     = fieldType{cronFieldSecond, 0, 59}
 	minute     = fieldType{cronFieldMinute, 0, 59}
@@ -86,24 +68,6 @@ type cronFieldBits struct {
 func newFieldBits(typ fieldType) *cronFieldBits {
 	return &cronFieldBits{
 		typ: typ,
-	}
-}
-
-func (bits *cronFieldBits) setBits(valueRange valueRange) {
-	if valueRange.MinValue == valueRange.MaxValue {
-		bits.bits |= 1 << valueRange.MinValue
-	} else {
-		bits.bits = ^(math.MaxUint64 << (valueRange.MaxValue + 1)) & (math.MaxUint64 << valueRange.MinValue)
-	}
-}
-
-func (bits *cronFieldBits) setBitsWithStep(valueRange valueRange, step int) {
-	if step == 1 {
-		bits.setBits(valueRange)
-	} else {
-		for index := valueRange.MinValue; index <= valueRange.MaxValue; index += step {
-			bits.bits |= 1 << index
-		}
 	}
 }
 
@@ -161,10 +125,13 @@ func parseField(value string, fieldType fieldType) (*cronFieldBits, error) {
 	for _, field := range fields {
 		slashPos := strings.Index(field, "/")
 
+		step := -1
+		var valueRange valueRange
+
 		if slashPos != -1 {
 			rangeStr := field[0:slashPos]
 
-			valueRange := parseRange(rangeStr, fieldType)
+			valueRange = parseRange(rangeStr, fieldType)
 
 			if strings.Index(rangeStr, "-") == -1 {
 				valueRange = newValueRange(valueRange.MinValue, fieldType.MaxValue)
@@ -172,7 +139,8 @@ func parseField(value string, fieldType fieldType) (*cronFieldBits, error) {
 
 			stepStr := field[slashPos+1:]
 
-			step, err := strconv.Atoi(stepStr)
+			var err error
+			step, err = strconv.Atoi(stepStr)
 
 			if err != nil {
 				panic(err)
@@ -182,10 +150,21 @@ func parseField(value string, fieldType fieldType) (*cronFieldBits, error) {
 				panic("step must be 1 or higher")
 			}
 
-			cronFieldBits.setBitsWithStep(valueRange, step)
 		} else {
-			valueRange := parseRange(field, fieldType)
-			cronFieldBits.setBits(valueRange)
+			valueRange = parseRange(field, fieldType)
+		}
+
+		if step > 1 {
+			for index := valueRange.MinValue; index <= valueRange.MaxValue; index += step {
+				cronFieldBits.bits |= 1 << index
+			}
+			continue
+		}
+
+		if valueRange.MinValue == valueRange.MaxValue {
+			cronFieldBits.bits |= 1 << valueRange.MinValue
+		} else {
+			cronFieldBits.bits = ^(math.MaxUint64 << (valueRange.MaxValue + 1)) & (math.MaxUint64 << valueRange.MinValue)
 		}
 	}
 
@@ -199,15 +178,15 @@ func parseRange(value string, fieldType fieldType) valueRange {
 		hyphenPos := strings.Index(value, "-")
 
 		if hyphenPos == -1 {
-			result := fieldType.checkValidValue(value)
+			result := checkValidValue(value, fieldType)
 
 			return newValueRange(result, result)
 		} else {
 			maxStr := value[hyphenPos+1:]
 			minStr := value[0:hyphenPos]
 
-			min := fieldType.checkValidValue(minStr)
-			max := fieldType.checkValidValue(maxStr)
+			min := checkValidValue(minStr, fieldType)
+			max := checkValidValue(maxStr, fieldType)
 
 			if fieldType.Field == cronFieldDayOfWeek && min == 7 {
 				min = 0
@@ -227,4 +206,22 @@ func replaceOrdinals(value string, list []string) string {
 	}
 
 	return value
+}
+
+func checkValidValue(value string, fieldType fieldType) int {
+	result, err := strconv.Atoi(value)
+
+	if err != nil {
+		panic(err)
+	}
+
+	if fieldType.Field == cronFieldDayOfWeek && result == 0 {
+		return result
+	}
+
+	if result >= fieldType.MinValue && result <= fieldType.MaxValue {
+		return result
+	}
+
+	panic("value is not valid")
 }
