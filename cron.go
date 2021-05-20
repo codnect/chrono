@@ -108,7 +108,6 @@ func (expression *CronExpression) next(t time.Time) time.Time {
 
 		temp := t
 		current := getTimeValue(temp, field.Typ.Field)
-
 		next := setNextBit(field.Bits, current)
 
 		if next == -1 {
@@ -123,7 +122,8 @@ func (expression *CronExpression) next(t time.Time) time.Time {
 			count := 0
 			current := getTimeValue(temp, field.Typ.Field)
 			for ; current != next && count < maxAttempts; count++ {
-
+				temp = elapseUntil(temp, field.Typ, next)
+				current = getTimeValue(temp, field.Typ.Field)
 			}
 
 			if count >= maxAttempts {
@@ -132,9 +132,10 @@ func (expression *CronExpression) next(t time.Time) time.Time {
 
 		}
 
+		t = temp
 	}
 
-	return time.Time{}
+	return t
 }
 
 func ParseCronExpression(expression string) (*CronExpression, error) {
@@ -351,4 +352,19 @@ func setNextBit(bitsValue uint64, index int) int {
 	}
 
 	return -1
+}
+
+func elapseUntil(t time.Time, fieldType fieldType, value int) time.Time {
+	current := getTimeValue(t, fieldType.Field)
+
+	if current >= value {
+		amount := value + fieldType.MaxValue - current + 1 - fieldType.MinValue
+		return addTime(t, fieldType.Field, amount)
+	}
+
+	if value >= fieldType.MinValue && value <= fieldType.MaxValue {
+		// TODO
+	}
+
+	return addTime(t, fieldType.Field, value-current)
 }
