@@ -363,8 +363,27 @@ func elapseUntil(t time.Time, fieldType fieldType, value int) time.Time {
 	}
 
 	if value >= fieldType.MinValue && value <= fieldType.MaxValue {
-		// TODO
+		return with(t, fieldType.Field, value)
 	}
 
 	return addTime(t, fieldType.Field, value-current)
+}
+
+func with(t time.Time, field cronField, value int) time.Time {
+	switch field {
+	case cronFieldSecond:
+		return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), value, 0, time.Local)
+	case cronFieldMinute:
+		return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), value, t.Second(), 0, time.Local)
+	case cronFieldHour:
+		return time.Date(t.Year(), t.Month(), t.Day(), value, t.Minute(), t.Second(), 0, time.Local)
+	case cronFieldDayOfMonth:
+		return time.Date(t.Year(), t.Month(), value, t.Hour(), t.Minute(), t.Second(), 0, time.Local)
+	case cronFieldMonth:
+		return time.Date(t.Year(), time.Month(value), t.Day(), t.Hour(), t.Minute(), t.Second(), 0, time.Local)
+	case cronFieldDayOfWeek:
+		return t.AddDate(0, 0, value-int(t.Weekday()))
+	}
+
+	panic("unreachable code")
 }
