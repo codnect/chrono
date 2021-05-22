@@ -113,37 +113,42 @@ func (expression *CronExpression) NextTime(t time.Time) time.Time {
 
 func (expression *CronExpression) next(t time.Time) time.Time {
 	for _, field := range expression.fields {
+		t = expression.nextField(field, t)
 
-		temp := t
-		current := getTimeValue(temp, field.Typ.Field)
-		next := setNextBit(field.Bits, current)
-
-		if next == -1 {
-			amount := getFieldMaxValue(t, field.Typ) - current + 1
-			temp = addTime(temp, field.Typ.Field, amount)
-			next = setNextBit(field.Bits, 0)
-		}
-
-		if next == current {
+		if t.IsZero() {
 			return t
-		} else {
-			count := 0
-			current := getTimeValue(temp, field.Typ.Field)
-			for ; current != next && count < maxAttempts; count++ {
-				temp = elapseUntil(temp, field.Typ, next)
-				current = getTimeValue(temp, field.Typ.Field)
-			}
-
-			if count >= maxAttempts {
-				return time.Time{}
-			}
-
 		}
-
-		t = temp
 	}
 
 	return t
+}
+
+func (expression *CronExpression) nextField(field *cronFieldBits, t time.Time) time.Time {
+	current := getTimeValue(t, field.Typ.Field)
+	next := setNextBit(field.Bits, current)
+
+	if next == -1 {
+		amount := getFieldMaxValue(t, field.Typ) - current + 1
+		t = addTime(t, field.Typ.Field, amount)
+		next = setNextBit(field.Bits, 0)
+	}
+
+	if next == current {
+		return t
+	} else {
+		count := 0
+		current := getTimeValue(t, field.Typ.Field)
+		for ; current != next && count < maxAttempts; count++ {
+			t = elapseUntil(t, field.Typ, next)
+			current = getTimeValue(t, field.Typ.Field)
+		}
+
+		if count >= maxAttempts {
+			return time.Time{}
+		}
+
+		return t
+	}
 }
 
 func ParseCronExpression(expression string) (*CronExpression, error) {
@@ -430,7 +435,5 @@ func getFieldMaxValue(t time.Time, fieldType fieldType) int {
 }
 
 func isLeapYear(year int) bool {
-	return year%400 == 0 ||
-		year%100 != 0 &&
-			year%4 == 0
+	return year%400 == 0 || year%100 != 0 && year%4 == 0
 }
