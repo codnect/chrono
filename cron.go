@@ -18,6 +18,7 @@ var (
 type cronField string
 
 const (
+	cronFieldNanoSecond = "NANO_SECOND"
 	cronFieldSecond     = "SECOND"
 	cronFieldMinute     = "MINUTE"
 	cronFieldHour       = "HOUR"
@@ -33,6 +34,7 @@ type fieldType struct {
 }
 
 var (
+	nanoSecond = fieldType{cronFieldNanoSecond, 0, 999999999}
 	second     = fieldType{cronFieldSecond, 0, 59}
 	minute     = fieldType{cronFieldMinute, 0, 59}
 	hour       = fieldType{cronFieldHour, 0, 23}
@@ -81,14 +83,20 @@ type CronExpression struct {
 }
 
 func newCronExpression() *CronExpression {
-	return &CronExpression{
+	exp := &CronExpression{
 		make([]*cronFieldBits, 0),
 	}
+
+	nanoSecondBits := newFieldBits(nanoSecond)
+	nanoSecondBits.Bits = 1
+
+	exp.fields = append(exp.fields, nanoSecondBits)
+	return exp
 }
 
 func (expression *CronExpression) NextTime(t time.Time) time.Time {
 
-	t = t.Add(1*time.Second - time.Duration(t.Nanosecond())*time.Nanosecond)
+	t = t.Add(1 * time.Nanosecond)
 
 	for i := 0; i < maxAttempts; i++ {
 		result := expression.next(t)
@@ -111,7 +119,7 @@ func (expression *CronExpression) next(t time.Time) time.Time {
 		next := setNextBit(field.Bits, current)
 
 		if next == -1 {
-			amount := field.Typ.MaxValue - current + 1
+			amount := getFieldMaxValue(t, field.Typ) - current + 1
 			temp = addTime(temp, field.Typ.Field, amount)
 			next = setNextBit(field.Bits, 0)
 		}
@@ -308,6 +316,8 @@ func checkValidValue(value string, fieldType fieldType) (int, error) {
 func getTimeValue(t time.Time, field cronField) int {
 
 	switch field {
+	case cronFieldNanoSecond:
+		return t.Nanosecond()
 	case cronFieldSecond:
 		return t.Second()
 	case cronFieldMinute:
@@ -327,6 +337,8 @@ func getTimeValue(t time.Time, field cronField) int {
 
 func addTime(t time.Time, field cronField, value int) time.Time {
 	switch field {
+	case cronFieldNanoSecond:
+		return t.Add(time.Duration(value) * time.Nanosecond)
 	case cronFieldSecond:
 		return t.Add(time.Duration(value) * time.Second)
 	case cronFieldMinute:
@@ -357,12 +369,14 @@ func setNextBit(bitsValue uint64, index int) int {
 func elapseUntil(t time.Time, fieldType fieldType, value int) time.Time {
 	current := getTimeValue(t, fieldType.Field)
 
+	maxValue := getFieldMaxValue(t, fieldType)
+
 	if current >= value {
-		amount := value + fieldType.MaxValue - current + 1 - fieldType.MinValue
+		amount := value + maxValue - current + 1 - fieldType.MinValue
 		return addTime(t, fieldType.Field, amount)
 	}
 
-	if value >= fieldType.MinValue && value <= fieldType.MaxValue {
+	if value >= fieldType.MinValue && value <= maxValue {
 		return with(t, fieldType.Field, value)
 	}
 
@@ -371,19 +385,52 @@ func elapseUntil(t time.Time, fieldType fieldType, value int) time.Time {
 
 func with(t time.Time, field cronField, value int) time.Time {
 	switch field {
+	case cronFieldNanoSecond:
+		return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), value, time.Local)
 	case cronFieldSecond:
-		return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), value, 0, time.Local)
+		return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), value, t.Nanosecond(), time.Local)
 	case cronFieldMinute:
-		return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), value, t.Second(), 0, time.Local)
+		return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), value, t.Second(), t.Nanosecond(), time.Local)
 	case cronFieldHour:
-		return time.Date(t.Year(), t.Month(), t.Day(), value, t.Minute(), t.Second(), 0, time.Local)
+		return time.Date(t.Year(), t.Month(), t.Day(), value, t.Minute(), t.Second(), t.Nanosecond(), time.Local)
 	case cronFieldDayOfMonth:
-		return time.Date(t.Year(), t.Month(), value, t.Hour(), t.Minute(), t.Second(), 0, time.Local)
+		return time.Date(t.Year(), t.Month(), value, t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), time.Local)
 	case cronFieldMonth:
-		return time.Date(t.Year(), time.Month(value), t.Day(), t.Hour(), t.Minute(), t.Second(), 0, time.Local)
+		return time.Date(t.Year(), time.Month(value), t.Day(), t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), time.Local)
 	case cronFieldDayOfWeek:
 		return t.AddDate(0, 0, value-int(t.Weekday()))
 	}
 
 	panic("unreachable code")
+}
+
+func getFieldMaxValue(t time.Time, fieldType fieldType) int {
+
+	if cronFieldDayOfMonth == fieldType.Field {
+		switch int(t.Month()) {
+		case 2:
+			if isLeapYear(t.Year()) {
+				return 29
+			}
+			return 28
+		case 4:
+			return 30
+		case 6:
+			return 30
+		case 9:
+			return 30
+		case 11:
+			return 30
+		default:
+			return 31
+		}
+	}
+
+	return fieldType.MaxValue
+}
+
+func isLeapYear(year int) bool {
+	return year%400 == 0 ||
+		year%100 != 0 &&
+			year%4 == 0
 }
