@@ -346,7 +346,7 @@ func getTimeValue(t time.Time, field cronField) int {
 		return int(t.Weekday())
 	}
 
-	panic("unreachable code")
+	panic("unreachable code!")
 }
 
 func addTime(t time.Time, field cronField, value int) time.Time {
@@ -367,7 +367,7 @@ func addTime(t time.Time, field cronField, value int) time.Time {
 		return t.AddDate(0, 0, value)
 	}
 
-	panic("unreachable code")
+	panic("unreachable code!")
 }
 
 func setNextBit(bitsValue uint64, index int) int {
@@ -415,7 +415,7 @@ func with(t time.Time, field cronField, value int) time.Time {
 		return t.AddDate(0, 0, value-int(t.Weekday()))
 	}
 
-	panic("unreachable code")
+	panic("unreachable code!")
 }
 
 func getFieldMaxValue(t time.Time, fieldType fieldType) int {
