@@ -40,7 +40,7 @@ var (
 	hour       = fieldType{cronFieldHour, 0, 23}
 	dayOfMonth = fieldType{cronFieldDayOfMonth, 1, 31}
 	month      = fieldType{cronFieldMonth, 1, 12}
-	dayOfWeek  = fieldType{cronFieldDayOfWeek, 0, 6}
+	dayOfWeek  = fieldType{cronFieldDayOfWeek, 1, 7}
 )
 
 var cronFieldTypes = []fieldType{
@@ -169,6 +169,12 @@ func ParseCronExpression(expression string) (*CronExpression, error) {
 
 		if err != nil {
 			return nil, err
+		}
+
+		if cronFieldType.Field == cronFieldDayOfWeek && value.Bits&1<<0 != 0 {
+			value.Bits |= 1 << 7
+			temp := ^(1 << 0)
+			value.Bits &= uint64(temp)
 		}
 
 		cronExpression.fields = append(cronExpression.fields, value)
@@ -334,6 +340,9 @@ func getTimeValue(t time.Time, field cronField) int {
 	case cronFieldMonth:
 		return int(t.Month())
 	case cronFieldDayOfWeek:
+		if t.Weekday() == 0 {
+			return 7
+		}
 		return int(t.Weekday())
 	}
 
