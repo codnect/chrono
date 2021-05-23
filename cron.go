@@ -249,7 +249,7 @@ func parseField(value string, fieldType fieldType) (*cronFieldBits, error) {
 		if valueRange.MinValue == valueRange.MaxValue {
 			cronFieldBits.Bits |= 1 << valueRange.MinValue
 		} else {
-			cronFieldBits.Bits = ^(math.MaxUint64 << (valueRange.MaxValue + 1)) & (math.MaxUint64 << valueRange.MinValue)
+			cronFieldBits.Bits |= ^(math.MaxUint64 << (valueRange.MaxValue + 1)) & (math.MaxUint64 << valueRange.MinValue)
 		}
 	}
 
