@@ -3,33 +3,25 @@ package chrono
 import "time"
 
 type TriggerContext interface {
-	GetTime() time.Time
 	LastCompletionTime() time.Time
 	LastExecutionTime() time.Time
 	LastScheduledExecutionTime() time.Time
 }
 
 type SimpleTriggerContext struct {
-	clockTime                  time.Time
 	lastCompletionTime         time.Time
 	lastExecutionTime          time.Time
 	lastScheduledExecutionTime time.Time
 }
 
 func NewSimpleTriggerContext() *SimpleTriggerContext {
-	return &SimpleTriggerContext{
-		clockTime: time.Now(),
-	}
+	return &SimpleTriggerContext{}
 }
 
 func (ctx *SimpleTriggerContext) update(lastCompletionTime time.Time, lastExecutionTime time.Time, lastScheduledExecutionTime time.Time) {
 	ctx.lastCompletionTime = lastCompletionTime
 	ctx.lastExecutionTime = lastExecutionTime
 	ctx.lastScheduledExecutionTime = lastScheduledExecutionTime
-}
-
-func (ctx *SimpleTriggerContext) GetTime() time.Time {
-	return ctx.clockTime
 }
 
 func (ctx *SimpleTriggerContext) LastCompletionTime() time.Time {
