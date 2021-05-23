@@ -3,8 +3,6 @@ package chrono
 import (
 	"context"
 	"log"
-	"os"
-	"os/signal"
 	"testing"
 	"time"
 )
@@ -21,7 +19,7 @@ func TestNewScheduledTaskExecutor(t *testing.T) {
 	//scheduledTaskExecutor := NewDefaultScheduledExecutor()
 	//scheduledTaskExecutor.ScheduleAtWithRate(&TestTask1{}, 0, 8*time.Second)
 
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt)
-	<-quit
+	//quit := make(chan os.Signal, 1)
+	//signal.Notify(quit, os.Interrupt)
+	//<-quit
 }
