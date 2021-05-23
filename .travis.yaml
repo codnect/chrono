@@ -7,7 +7,7 @@ go:
 
 branches:
   only:
-    - master
+    - main
 
 before_install:
   - go get -t -v ./...
