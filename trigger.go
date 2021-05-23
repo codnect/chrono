@@ -137,7 +137,7 @@ func (trigger *CronTrigger) NextExecutionTime(ctx TriggerContext) time.Time {
 
 	}
 
-	//originalLocation := now.Location()
-	//next := trigger.cronExpression.NextTime(now.In(trigger.location))
-	return time.Now() //next.In(originalLocation)
+	originalLocation := now.Location()
+	next := trigger.cronExpression.NextTime(now.In(trigger.location))
+	return next.In(originalLocation)
 }

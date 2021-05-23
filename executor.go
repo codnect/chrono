@@ -6,9 +6,9 @@ import (
 )
 
 type ScheduledExecutor interface {
-	Schedule(task Task, delay time.Duration) *ScheduledTask
-	ScheduleWithFixedDelay(task Task, initialDelay time.Duration, delay time.Duration) *ScheduledTask
-	ScheduleAtWithRate(task Task, initialDelay time.Duration, period time.Duration) *ScheduledTask
+	Schedule(task Task, delay time.Duration) ScheduledTask
+	ScheduleWithFixedDelay(task Task, initialDelay time.Duration, delay time.Duration) ScheduledTask
+	ScheduleAtWithRate(task Task, initialDelay time.Duration, period time.Duration) ScheduledTask
 	Shutdown()
 }
 
@@ -17,9 +17,9 @@ type ScheduledTaskExecutor struct {
 	nextSequenceMu        sync.RWMutex
 	timer                 *time.Timer
 	taskQueue             ScheduledTaskQueue
-	newTaskChannel        chan *ScheduledTask
-	removeTaskChannel     chan *ScheduledTask
-	rescheduleTaskChannel chan *ScheduledTask
+	newTaskChannel        chan *ScheduledRunnableTask
+	removeTaskChannel     chan *ScheduledRunnableTask
+	rescheduleTaskChannel chan *ScheduledRunnableTask
 	taskWaitGroup         sync.WaitGroup
 	taskRunner            TaskRunner
 }
@@ -36,9 +36,9 @@ func NewScheduledTaskExecutor(runner TaskRunner) *ScheduledTaskExecutor {
 	executor := &ScheduledTaskExecutor{
 		timer:                 time.NewTimer(1 * time.Hour),
 		taskQueue:             make(ScheduledTaskQueue, 0),
-		newTaskChannel:        make(chan *ScheduledTask),
-		rescheduleTaskChannel: make(chan *ScheduledTask),
-		removeTaskChannel:     make(chan *ScheduledTask),
+		newTaskChannel:        make(chan *ScheduledRunnableTask),
+		rescheduleTaskChannel: make(chan *ScheduledRunnableTask),
+		removeTaskChannel:     make(chan *ScheduledRunnableTask),
 		taskRunner:            runner,
 	}
 
@@ -49,14 +49,14 @@ func NewScheduledTaskExecutor(runner TaskRunner) *ScheduledTaskExecutor {
 	return executor
 }
 
-func (executor *ScheduledTaskExecutor) Schedule(task Task, delay time.Duration) *ScheduledTask {
+func (executor *ScheduledTaskExecutor) Schedule(task Task, delay time.Duration) ScheduledTask {
 	if task == nil {
 		panic("task cannot be nil")
 	}
 
 	executor.nextSequenceMu.Lock()
 	executor.nextSequence++
-	scheduledTask := NewScheduledTask(executor.nextSequence, task, executor.calculateTriggerTime(delay), 0, false)
+	scheduledTask := NewScheduledRunnableTask(executor.nextSequence, task, executor.calculateTriggerTime(delay), 0, false)
 	executor.nextSequenceMu.Unlock()
 
 	executor.addNewTask(scheduledTask)
@@ -64,14 +64,14 @@ func (executor *ScheduledTaskExecutor) Schedule(task Task, delay time.Duration) 
 	return scheduledTask
 }
 
-func (executor *ScheduledTaskExecutor) ScheduleWithFixedDelay(task Task, initialDelay time.Duration, delay time.Duration) *ScheduledTask {
+func (executor *ScheduledTaskExecutor) ScheduleWithFixedDelay(task Task, initialDelay time.Duration, delay time.Duration) ScheduledTask {
 	if task == nil {
 		panic("task cannot be nil")
 	}
 
 	executor.nextSequenceMu.Lock()
 	executor.nextSequence++
-	scheduledTask := NewScheduledTask(executor.nextSequence, task, executor.calculateTriggerTime(initialDelay), delay, false)
+	scheduledTask := NewScheduledRunnableTask(executor.nextSequence, task, executor.calculateTriggerTime(initialDelay), delay, false)
 	executor.nextSequenceMu.Unlock()
 
 	executor.addNewTask(scheduledTask)
@@ -79,14 +79,14 @@ func (executor *ScheduledTaskExecutor) ScheduleWithFixedDelay(task Task, initial
 	return scheduledTask
 }
 
-func (executor *ScheduledTaskExecutor) ScheduleAtWithRate(task Task, initialDelay time.Duration, period time.Duration) *ScheduledTask {
+func (executor *ScheduledTaskExecutor) ScheduleAtWithRate(task Task, initialDelay time.Duration, period time.Duration) ScheduledTask {
 	if task == nil {
 		panic("task cannot be nil")
 	}
 
 	executor.nextSequenceMu.Lock()
 	executor.nextSequence++
-	scheduledTask := NewScheduledTask(executor.nextSequence, task, executor.calculateTriggerTime(initialDelay), period, true)
+	scheduledTask := NewScheduledRunnableTask(executor.nextSequence, task, executor.calculateTriggerTime(initialDelay), period, true)
 	executor.nextSequenceMu.Unlock()
 
 	executor.addNewTask(scheduledTask)
@@ -106,7 +106,7 @@ func (executor *ScheduledTaskExecutor) calculateTriggerTime(delay time.Duration)
 	return time.Now().Add(delay)
 }
 
-func (executor *ScheduledTaskExecutor) addNewTask(task *ScheduledTask) {
+func (executor *ScheduledTaskExecutor) addNewTask(task *ScheduledRunnableTask) {
 	executor.newTaskChannel <- task
 }
 
@@ -115,10 +115,10 @@ func (executor *ScheduledTaskExecutor) run() {
 	for {
 		executor.taskQueue.SorByTriggerTime()
 
-		if executor.taskQueue.IsEmpty() {
+		if len(executor.taskQueue) == 0 {
 			executor.timer.Stop()
 		} else {
-			executor.timer.Reset(executor.taskQueue[0].GetDelay())
+			executor.timer.Reset(executor.taskQueue[0].getDelay())
 		}
 
 		for {
@@ -135,7 +135,11 @@ func (executor *ScheduledTaskExecutor) run() {
 
 					taskIndex = index
 
-					if scheduledTask.IsPeriodic() && scheduledTask.IsFixedRate() {
+					if scheduledTask.IsCancelled() {
+						continue
+					}
+
+					if scheduledTask.isPeriodic() && scheduledTask.isFixedRate() {
 						scheduledTask.triggerTime = scheduledTask.triggerTime.Add(scheduledTask.period)
 					}
 
@@ -170,23 +174,27 @@ func (executor *ScheduledTaskExecutor) run() {
 
 }
 
-func (executor *ScheduledTaskExecutor) startTask(scheduledTask *ScheduledTask) {
+func (executor *ScheduledTaskExecutor) startTask(scheduledRunnableTask *ScheduledRunnableTask) {
 	executor.taskWaitGroup.Add(1)
 
 	go func() {
 		defer func() {
 			executor.taskWaitGroup.Done()
-			scheduledTask.triggerTime = executor.calculateTriggerTime(scheduledTask.period)
+			scheduledRunnableTask.triggerTime = executor.calculateTriggerTime(scheduledRunnableTask.period)
 
-			if scheduledTask.IsPeriodic() && !scheduledTask.IsFixedRate() {
-				executor.rescheduleTaskChannel <- scheduledTask
+			if !scheduledRunnableTask.isPeriodic() {
+				scheduledRunnableTask.Cancel()
+			} else {
+				if !scheduledRunnableTask.isFixedRate() {
+					executor.rescheduleTaskChannel <- scheduledRunnableTask
+				}
 			}
 		}()
 
-		if scheduledTask.IsPeriodic() && scheduledTask.IsFixedRate() {
-			executor.rescheduleTaskChannel <- scheduledTask
+		if scheduledRunnableTask.isPeriodic() && scheduledRunnableTask.isFixedRate() {
+			executor.rescheduleTaskChannel <- scheduledRunnableTask
 		}
 
-		executor.taskRunner.Run(scheduledTask.task)
+		executor.taskRunner.Run(scheduledRunnableTask.task)
 	}()
 }

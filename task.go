@@ -3,6 +3,7 @@ package chrono
 import (
 	"context"
 	"sort"
+	"sync"
 	"time"
 )
 
@@ -69,20 +70,27 @@ func WithLocation(location string) Option {
 	}
 }
 
-type ScheduledTask struct {
+type ScheduledTask interface {
+	Cancel()
+	IsCancelled() bool
+}
+
+type ScheduledRunnableTask struct {
 	id          int
 	task        Task
+	taskMu      sync.RWMutex
 	triggerTime time.Time
 	period      time.Duration
 	fixedRate   bool
+	cancelled   bool
 }
 
-func NewScheduledTask(id int, task Task, triggerTime time.Time, period time.Duration, fixedRate bool) *ScheduledTask {
+func NewScheduledRunnableTask(id int, task Task, triggerTime time.Time, period time.Duration, fixedRate bool) *ScheduledRunnableTask {
 	if period < 0 {
 		period = 0
 	}
 
-	return &ScheduledTask{
+	return &ScheduledRunnableTask{
 		id:          id,
 		task:        task,
 		triggerTime: triggerTime,
@@ -91,19 +99,31 @@ func NewScheduledTask(id int, task Task, triggerTime time.Time, period time.Dura
 	}
 }
 
-func (scheduledTask *ScheduledTask) GetDelay() time.Duration {
-	return scheduledTask.triggerTime.Sub(time.Now())
+func (schedulerRunnableTask *ScheduledRunnableTask) Cancel() {
+	schedulerRunnableTask.taskMu.Lock()
+	defer schedulerRunnableTask.taskMu.Unlock()
+	schedulerRunnableTask.cancelled = true
 }
 
-func (scheduledTask *ScheduledTask) IsPeriodic() bool {
-	return scheduledTask.period != 0
+func (schedulerRunnableTask *ScheduledRunnableTask) IsCancelled() bool {
+	schedulerRunnableTask.taskMu.Lock()
+	defer schedulerRunnableTask.taskMu.Unlock()
+	return schedulerRunnableTask.cancelled
 }
 
-func (scheduledTask *ScheduledTask) IsFixedRate() bool {
-	return scheduledTask.fixedRate
+func (schedulerRunnableTask *ScheduledRunnableTask) getDelay() time.Duration {
+	return schedulerRunnableTask.triggerTime.Sub(time.Now())
 }
 
-type ScheduledTaskQueue []*ScheduledTask
+func (schedulerRunnableTask *ScheduledRunnableTask) isPeriodic() bool {
+	return schedulerRunnableTask.period != 0
+}
+
+func (schedulerRunnableTask *ScheduledRunnableTask) isFixedRate() bool {
+	return schedulerRunnableTask.fixedRate
+}
+
+type ScheduledTaskQueue []*ScheduledRunnableTask
 
 func (queue ScheduledTaskQueue) IsEmpty() bool {
 	return queue.Len() == 0
@@ -125,26 +145,72 @@ func (queue ScheduledTaskQueue) SorByTriggerTime() {
 	sort.Sort(queue)
 }
 
-type ReschedulableTask struct {
-	executor ScheduledExecutor
-	trigger  Trigger
+type TriggerTask struct {
+	task                 Task
+	currentScheduledTask ScheduledTask
+	executor             ScheduledExecutor
+	triggerContext       *SimpleTriggerContext
+	triggerContextMu     sync.RWMutex
+	trigger              Trigger
+	nextTriggerTime      time.Time
 }
 
-func NewReschedulableTask(executor ScheduledExecutor, trigger Trigger) *ReschedulableTask {
+func NewTriggerTask(task Task, executor ScheduledExecutor, trigger Trigger) *TriggerTask {
 	if executor == nil {
 		panic("executor cannot be nil")
 	}
 
-	if trigger != nil {
+	if trigger == nil {
 		panic("trigger cannot be nil")
 	}
 
-	return &ReschedulableTask{
-		executor,
-		trigger,
+	return &TriggerTask{
+		task:           task,
+		executor:       executor,
+		triggerContext: NewSimpleTriggerContext(),
+		trigger:        trigger,
 	}
 }
 
-func (task *ReschedulableTask) Schedule() *ScheduledTask {
-	return nil
+func (task *TriggerTask) Cancel() {
+	task.triggerContextMu.Lock()
+	defer task.triggerContextMu.Unlock()
+	task.currentScheduledTask.Cancel()
+}
+
+func (task *TriggerTask) IsCancelled() bool {
+	task.triggerContextMu.Lock()
+	defer task.triggerContextMu.Unlock()
+	return task.currentScheduledTask.IsCancelled()
+}
+
+func (task *TriggerTask) Schedule() ScheduledTask {
+	task.triggerContextMu.Lock()
+	defer task.triggerContextMu.Unlock()
+
+	task.nextTriggerTime = task.trigger.NextExecutionTime(task.triggerContext)
+
+	if task.nextTriggerTime.IsZero() {
+		return nil
+	}
+
+	initialDelay := task.nextTriggerTime.Sub(time.Now())
+	task.currentScheduledTask = task.executor.Schedule(task, initialDelay)
+
+	return task
+}
+
+func (task *TriggerTask) Run(ctx context.Context) {
+	task.triggerContextMu.Lock()
+
+	executionTime := time.Now()
+	task.task.Run(ctx)
+	completionTime := time.Now()
+
+	task.triggerContext.update(completionTime, executionTime, task.nextTriggerTime)
+	task.triggerContextMu.Unlock()
+
+	if !task.IsCancelled() {
+		task.Schedule()
+	}
 }
