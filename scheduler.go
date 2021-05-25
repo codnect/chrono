@@ -17,7 +17,7 @@ type SimpleScheduler struct {
 	executor ScheduledExecutor
 }
 
-func NewScheduler(executor ScheduledExecutor) Scheduler {
+func NewSimpleScheduler(executor ScheduledExecutor) *SimpleScheduler {
 
 	if executor == nil {
 		executor = NewDefaultScheduledExecutor()
@@ -31,7 +31,7 @@ func NewScheduler(executor ScheduledExecutor) Scheduler {
 }
 
 func NewDefaultScheduler() Scheduler {
-	return NewScheduler(NewDefaultScheduledExecutor())
+	return NewSimpleScheduler(NewDefaultScheduledExecutor())
 }
 
 func (scheduler *SimpleScheduler) Schedule(task Task, options ...Option) ScheduledTask {
@@ -57,9 +57,9 @@ func (scheduler *SimpleScheduler) ScheduleWithFixedDelay(task Task, delay time.D
 
 func (scheduler *SimpleScheduler) ScheduleAtFixedRate(task Task, period time.Duration, options ...Option) ScheduledTask {
 	schedulerTask := NewSchedulerTask(task, options...)
-	return scheduler.executor.ScheduleAtRate(schedulerTask.task, schedulerTask.GetInitialDelay(), period)
+	return scheduler.executor.ScheduleAtFixedRate(schedulerTask.task, schedulerTask.GetInitialDelay(), period)
 }
 
 func (scheduler *SimpleScheduler) Terminate() {
-
+	scheduler.executor.Shutdown()
 }
