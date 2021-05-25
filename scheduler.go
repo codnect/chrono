@@ -6,7 +6,6 @@ import (
 
 type Scheduler interface {
 	Schedule(task Task, options ...Option) ScheduledTask
-	ScheduleWithTrigger(task Task, trigger Trigger) ScheduledTask
 	ScheduleWithCron(task Task, expression string, options ...Option) ScheduledTask
 	ScheduleWithFixedDelay(task Task, delay time.Duration, options ...Option) ScheduledTask
 	ScheduleAtFixedRate(task Task, period time.Duration, options ...Option) ScheduledTask
@@ -37,11 +36,6 @@ func NewDefaultScheduler() Scheduler {
 func (scheduler *SimpleScheduler) Schedule(task Task, options ...Option) ScheduledTask {
 	schedulerTask := NewSchedulerTask(task, options...)
 	return scheduler.executor.Schedule(task, schedulerTask.GetInitialDelay())
-}
-
-func (scheduler *SimpleScheduler) ScheduleWithTrigger(task Task, trigger Trigger) ScheduledTask {
-	triggerTask := NewTriggerTask(task, scheduler.executor, trigger)
-	return triggerTask.Schedule()
 }
 
 func (scheduler *SimpleScheduler) ScheduleWithCron(task Task, expression string, options ...Option) ScheduledTask {

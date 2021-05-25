@@ -122,3 +122,19 @@ func TestSimpleScheduler_ScheduleAtFixedRateWithStartTimeOption(t *testing.T) {
 	assert.True(t, counter >= 5 && counter <= 10,
 		"number of scheduled task execution must be between 5 and 10")
 }
+
+func TestSimpleScheduler_ScheduleWithCron(t *testing.T) {
+	scheduler := NewSimpleScheduler(NewDefaultScheduledExecutor())
+
+	var counter int32
+
+	task := scheduler.ScheduleWithCron(func(ctx context.Context) {
+		atomic.AddInt32(&counter, 1)
+		<-time.After(500 * time.Millisecond)
+	}, "0-59/2 * * * * *")
+
+	<-time.After(10 * time.Second)
+	task.Cancel()
+	assert.True(t, counter >= 5,
+		"number of scheduled task execution must be at least 5")
+}

@@ -145,7 +145,7 @@ func (queue ScheduledTaskQueue) SorByTriggerTime() {
 
 type TriggerTask struct {
 	task                 Task
-	currentScheduledTask ScheduledTask
+	currentScheduledTask *ScheduledRunnableTask
 	executor             ScheduledExecutor
 	triggerContext       *SimpleTriggerContext
 	triggerContextMu     sync.RWMutex
@@ -193,7 +193,8 @@ func (task *TriggerTask) Schedule() ScheduledTask {
 	}
 
 	initialDelay := task.nextTriggerTime.Sub(time.Now())
-	task.currentScheduledTask = task.executor.Schedule(task.task, initialDelay)
+
+	task.currentScheduledTask = task.executor.Schedule(task.Run, initialDelay).(*ScheduledRunnableTask)
 
 	return task
 }
@@ -205,7 +206,7 @@ func (task *TriggerTask) Run(ctx context.Context) {
 	task.task(ctx)
 	completionTime := time.Now()
 
-	task.triggerContext.update(completionTime, executionTime, task.nextTriggerTime)
+	task.triggerContext.Update(completionTime, executionTime, task.nextTriggerTime)
 	task.triggerContextMu.Unlock()
 
 	if !task.IsCancelled() {

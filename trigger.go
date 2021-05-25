@@ -18,7 +18,7 @@ func NewSimpleTriggerContext() *SimpleTriggerContext {
 	return &SimpleTriggerContext{}
 }
 
-func (ctx *SimpleTriggerContext) update(lastCompletionTime time.Time, lastExecutionTime time.Time, lastScheduledExecutionTime time.Time) {
+func (ctx *SimpleTriggerContext) Update(lastCompletionTime time.Time, lastExecutionTime time.Time, lastScheduledExecutionTime time.Time) {
 	ctx.lastCompletionTime = lastCompletionTime
 	ctx.lastExecutionTime = lastExecutionTime
 	ctx.lastScheduledExecutionTime = lastScheduledExecutionTime
@@ -38,57 +38,6 @@ func (ctx *SimpleTriggerContext) LastScheduledExecutionTime() time.Time {
 
 type Trigger interface {
 	NextExecutionTime(ctx TriggerContext) time.Time
-}
-
-type PeriodicTrigger struct {
-	initialDelay time.Duration
-	period       time.Duration
-	fixedRate    bool
-	location     *time.Location
-}
-
-func NewPeriodicTrigger(period, initialDelay time.Duration, fixedRate bool) *PeriodicTrigger {
-
-	if initialDelay < 0 {
-		initialDelay = 0
-	}
-
-	if period <= 0 {
-		panic("period must be positive")
-	}
-
-	return &PeriodicTrigger{
-		initialDelay: initialDelay,
-		period:       period,
-		fixedRate:    fixedRate,
-	}
-}
-
-func (trigger *PeriodicTrigger) GetInitialDelay() time.Duration {
-	return trigger.initialDelay
-}
-
-func (trigger *PeriodicTrigger) GetPeriod() time.Duration {
-	return trigger.period
-}
-
-func (trigger *PeriodicTrigger) IsFixedRate() bool {
-	return trigger.fixedRate
-}
-
-func (trigger *PeriodicTrigger) NextExecutionTime(ctx TriggerContext) time.Time {
-	lastCompletion := ctx.LastCompletionTime()
-	lastExecution := ctx.LastScheduledExecutionTime()
-
-	if lastCompletion.IsZero() || lastExecution.IsZero() {
-		return time.Now().Add(trigger.initialDelay)
-	}
-
-	if !trigger.fixedRate {
-		return lastCompletion.Add(trigger.period)
-	}
-
-	return lastExecution.Add(trigger.period)
 }
 
 type CronTrigger struct {
