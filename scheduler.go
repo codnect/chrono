@@ -57,7 +57,7 @@ func (scheduler *SimpleScheduler) ScheduleWithFixedDelay(task Task, delay time.D
 
 func (scheduler *SimpleScheduler) ScheduleAtFixedRate(task Task, period time.Duration, options ...Option) ScheduledTask {
 	schedulerTask := NewSchedulerTask(task, options...)
-	return scheduler.executor.ScheduleAtWithRate(schedulerTask.task, schedulerTask.GetInitialDelay(), period)
+	return scheduler.executor.ScheduleAtRate(schedulerTask.task, schedulerTask.GetInitialDelay(), period)
 }
 
 func (scheduler *SimpleScheduler) Terminate() {

@@ -8,7 +8,7 @@ import (
 type ScheduledExecutor interface {
 	Schedule(task Task, delay time.Duration) ScheduledTask
 	ScheduleWithFixedDelay(task Task, initialDelay time.Duration, delay time.Duration) ScheduledTask
-	ScheduleAtWithRate(task Task, initialDelay time.Duration, period time.Duration) ScheduledTask
+	ScheduleAtRate(task Task, initialDelay time.Duration, period time.Duration) ScheduledTask
 	Shutdown()
 }
 
@@ -79,7 +79,7 @@ func (executor *ScheduledTaskExecutor) ScheduleWithFixedDelay(task Task, initial
 	return scheduledTask
 }
 
-func (executor *ScheduledTaskExecutor) ScheduleAtWithRate(task Task, initialDelay time.Duration, period time.Duration) ScheduledTask {
+func (executor *ScheduledTaskExecutor) ScheduleAtRate(task Task, initialDelay time.Duration, period time.Duration) ScheduledTask {
 	if task == nil {
 		panic("task cannot be nil")
 	}

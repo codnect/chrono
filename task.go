@@ -7,9 +7,7 @@ import (
 	"time"
 )
 
-type Task interface {
-	Run(ctx context.Context)
-}
+type Task func(ctx context.Context)
 
 type SchedulerTask struct {
 	task      Task
@@ -195,7 +193,7 @@ func (task *TriggerTask) Schedule() ScheduledTask {
 	}
 
 	initialDelay := task.nextTriggerTime.Sub(time.Now())
-	task.currentScheduledTask = task.executor.Schedule(task, initialDelay)
+	task.currentScheduledTask = task.executor.Schedule(task.task, initialDelay)
 
 	return task
 }
@@ -204,7 +202,7 @@ func (task *TriggerTask) Run(ctx context.Context) {
 	task.triggerContextMu.Lock()
 
 	executionTime := time.Now()
-	task.task.Run(ctx)
+	task.task(ctx)
 	completionTime := time.Now()
 
 	task.triggerContext.update(completionTime, executionTime, task.nextTriggerTime)

@@ -14,5 +14,5 @@ func NewDefaultTaskRunner() TaskRunner {
 }
 
 func (runner *SimpleTaskRunner) Run(task Task) {
-	task.Run(context.Background())
+	task(context.Background())
 }
