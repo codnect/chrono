@@ -156,3 +156,40 @@ func TestScheduledTaskExecutor_NoNewTaskShouldBeAccepted_AfterShutdown(t *testin
 		}, 1*time.Second, 200*time.Millisecond)
 	})
 }
+
+func TestScheduledTaskExecutor_Schedule_MultiTasks(t *testing.T) {
+	executor := NewScheduledTaskExecutor(NewDefaultTaskRunner())
+
+	var task1Counter int32
+	var task2Counter int32
+	var task3Counter int32
+
+	task1 := executor.ScheduleAtFixedRate(func(ctx context.Context) {
+		atomic.AddInt32(&task1Counter, 1)
+		<-time.After(500 * time.Millisecond)
+	}, 1*time.Second, 200*time.Millisecond)
+
+	task2 := executor.ScheduleWithFixedDelay(func(ctx context.Context) {
+		atomic.AddInt32(&task2Counter, 1)
+		<-time.After(500 * time.Millisecond)
+	}, 0, 200*time.Millisecond)
+
+	task3 := executor.ScheduleAtFixedRate(func(ctx context.Context) {
+		atomic.AddInt32(&task3Counter, 1)
+	}, 0, 200*time.Millisecond)
+
+	<-time.After(2 * time.Second)
+
+	task1.Cancel()
+	task2.Cancel()
+	task3.Cancel()
+
+	assert.True(t, task1Counter >= 5 && task1Counter <= 10,
+		"number of scheduled task 1 execution must be between 5 and 10, actual: %d", task1Counter)
+
+	assert.True(t, task2Counter >= 1 && task2Counter <= 3,
+		"number of scheduled task 2 execution must be between 1 and 3, actual: %d", task2Counter)
+
+	assert.True(t, task3Counter >= 1 && task3Counter <= 10,
+		"number of scheduled task execution must be between 5 and 10, actual: %d", task3Counter)
+}
