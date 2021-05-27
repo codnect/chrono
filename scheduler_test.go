@@ -117,7 +117,7 @@ func TestSimpleScheduler_ScheduleAtFixedRateWithStartTimeOption(t *testing.T) {
 	}, 200*time.Millisecond, WithStartTime(
 		Time(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second()+1, now.Nanosecond())))
 
-	<-time.After(3 * time.Second)
+	<-time.After(3*time.Second - 50*time.Millisecond)
 	task.Cancel()
 	assert.True(t, counter >= 5 && counter <= 10,
 		"number of scheduled task execution must be between 5 and 10, actual: %d", counter)
