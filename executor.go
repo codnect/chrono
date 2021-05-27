@@ -1,6 +1,7 @@
 package chrono
 
 import (
+	"context"
 	"sync"
 	"time"
 )
@@ -9,19 +10,21 @@ type ScheduledExecutor interface {
 	Schedule(task Task, delay time.Duration) ScheduledTask
 	ScheduleWithFixedDelay(task Task, initialDelay time.Duration, delay time.Duration) ScheduledTask
 	ScheduleAtFixedRate(task Task, initialDelay time.Duration, period time.Duration) ScheduledTask
-	Shutdown()
+	Shutdown() chan bool
 }
 
 type ScheduledTaskExecutor struct {
 	nextSequence          int
-	nextSequenceMu        sync.RWMutex
+	isShutdown            bool
+	executorMu            sync.RWMutex
 	timer                 *time.Timer
+	taskWaitGroup         sync.WaitGroup
 	taskQueue             ScheduledTaskQueue
 	newTaskChannel        chan *ScheduledRunnableTask
 	removeTaskChannel     chan *ScheduledRunnableTask
 	rescheduleTaskChannel chan *ScheduledRunnableTask
-	taskWaitGroup         sync.WaitGroup
 	taskRunner            TaskRunner
+	shutdownChannel       chan chan bool
 }
 
 func NewDefaultScheduledExecutor() ScheduledExecutor {
@@ -40,6 +43,7 @@ func NewScheduledTaskExecutor(runner TaskRunner) *ScheduledTaskExecutor {
 		rescheduleTaskChannel: make(chan *ScheduledRunnableTask),
 		removeTaskChannel:     make(chan *ScheduledRunnableTask),
 		taskRunner:            runner,
+		shutdownChannel:       make(chan chan bool),
 	}
 
 	executor.timer.Stop()
@@ -54,10 +58,16 @@ func (executor *ScheduledTaskExecutor) Schedule(task Task, delay time.Duration) 
 		panic("task cannot be nil")
 	}
 
-	executor.nextSequenceMu.Lock()
+	executor.executorMu.Lock()
+
+	if executor.isShutdown {
+		executor.executorMu.Unlock()
+		panic("no new task won't be accepted because executor is already shut down")
+	}
+
 	executor.nextSequence++
 	scheduledTask := NewScheduledRunnableTask(executor.nextSequence, task, executor.calculateTriggerTime(delay), 0, false)
-	executor.nextSequenceMu.Unlock()
+	executor.executorMu.Unlock()
 
 	executor.addNewTask(scheduledTask)
 
@@ -69,10 +79,16 @@ func (executor *ScheduledTaskExecutor) ScheduleWithFixedDelay(task Task, initial
 		panic("task cannot be nil")
 	}
 
-	executor.nextSequenceMu.Lock()
+	executor.executorMu.Lock()
+
+	if executor.isShutdown {
+		executor.executorMu.Unlock()
+		panic("no new task won't be accepted because executor is already shut down")
+	}
+
 	executor.nextSequence++
 	scheduledTask := NewScheduledRunnableTask(executor.nextSequence, task, executor.calculateTriggerTime(initialDelay), delay, false)
-	executor.nextSequenceMu.Unlock()
+	executor.executorMu.Unlock()
 
 	executor.addNewTask(scheduledTask)
 
@@ -84,18 +100,36 @@ func (executor *ScheduledTaskExecutor) ScheduleAtFixedRate(task Task, initialDel
 		panic("task cannot be nil")
 	}
 
-	executor.nextSequenceMu.Lock()
+	executor.executorMu.Lock()
+
+	if executor.isShutdown {
+		executor.executorMu.Unlock()
+		panic("no new task won't be accepted because executor is already shut down")
+	}
+
 	executor.nextSequence++
 	scheduledTask := NewScheduledRunnableTask(executor.nextSequence, task, executor.calculateTriggerTime(initialDelay), period, true)
-	executor.nextSequenceMu.Unlock()
+	executor.executorMu.Unlock()
 
 	executor.addNewTask(scheduledTask)
 
 	return scheduledTask
 }
 
-func (executor *ScheduledTaskExecutor) Shutdown() {
+func (executor *ScheduledTaskExecutor) Shutdown() chan bool {
+	executor.executorMu.Lock()
+	defer executor.executorMu.Unlock()
 
+	if executor.isShutdown {
+		executor.isShutdown = true
+		executor.executorMu.Unlock()
+
+		panic("executor is already shut down")
+	}
+
+	stoppedChan := make(chan bool)
+	executor.shutdownChannel <- stoppedChan
+	return stoppedChan
 }
 
 func (executor *ScheduledTaskExecutor) calculateTriggerTime(delay time.Duration) time.Time {
@@ -165,6 +199,10 @@ func (executor *ScheduledTaskExecutor) run() {
 				}
 
 				executor.taskQueue = append(executor.taskQueue[:taskIndex], executor.taskQueue[taskIndex+1:]...)
+			case stoppedChan := <-executor.shutdownChannel:
+				executor.taskWaitGroup.Wait()
+				stoppedChan <- true
+				return
 			}
 
 			break
@@ -177,15 +215,15 @@ func (executor *ScheduledTaskExecutor) run() {
 func (executor *ScheduledTaskExecutor) startTask(scheduledRunnableTask *ScheduledRunnableTask) {
 	executor.taskWaitGroup.Add(1)
 
-	go func() {
+	executor.taskRunner.Run(func(ctx context.Context) {
 		defer func() {
 			executor.taskWaitGroup.Done()
-			scheduledRunnableTask.triggerTime = executor.calculateTriggerTime(scheduledRunnableTask.period)
 
 			if !scheduledRunnableTask.isPeriodic() {
 				scheduledRunnableTask.Cancel()
 			} else {
 				if !scheduledRunnableTask.isFixedRate() {
+					scheduledRunnableTask.triggerTime = executor.calculateTriggerTime(scheduledRunnableTask.period)
 					executor.rescheduleTaskChannel <- scheduledRunnableTask
 				}
 			}
@@ -195,6 +233,7 @@ func (executor *ScheduledTaskExecutor) startTask(scheduledRunnableTask *Schedule
 			executor.rescheduleTaskChannel <- scheduledRunnableTask
 		}
 
-		executor.taskRunner.Run(scheduledRunnableTask.task)
-	}()
+		scheduledRunnableTask.task(ctx)
+	})
+
 }

@@ -9,7 +9,7 @@ type Scheduler interface {
 	ScheduleWithCron(task Task, expression string, options ...Option) ScheduledTask
 	ScheduleWithFixedDelay(task Task, delay time.Duration, options ...Option) ScheduledTask
 	ScheduleAtFixedRate(task Task, period time.Duration, options ...Option) ScheduledTask
-	Terminate()
+	Shutdown() chan bool
 }
 
 type SimpleScheduler struct {
@@ -54,6 +54,6 @@ func (scheduler *SimpleScheduler) ScheduleAtFixedRate(task Task, period time.Dur
 	return scheduler.executor.ScheduleAtFixedRate(schedulerTask.task, schedulerTask.GetInitialDelay(), period)
 }
 
-func (scheduler *SimpleScheduler) Terminate() {
-	scheduler.executor.Shutdown()
+func (scheduler *SimpleScheduler) Shutdown() chan bool {
+	return scheduler.executor.Shutdown()
 }

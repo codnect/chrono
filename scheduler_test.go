@@ -69,7 +69,7 @@ func TestSimpleScheduler_ScheduleWithFixedDelay(t *testing.T) {
 	<-time.After(1*time.Second + 500*time.Millisecond)
 	task.Cancel()
 	assert.True(t, counter >= 1 && counter <= 3,
-		"number of scheduled task execution must be between 1 and 2, actual: %d", counter)
+		"number of scheduled task execution must be between 1 and 3, actual: %d", counter)
 }
 
 func TestSimpleScheduler_ScheduleWithFixedDelayWithStartTimeOption(t *testing.T) {
@@ -87,7 +87,7 @@ func TestSimpleScheduler_ScheduleWithFixedDelayWithStartTimeOption(t *testing.T)
 	<-time.After(2*time.Second + 500*time.Millisecond)
 	task.Cancel()
 	assert.True(t, counter >= 1 && counter <= 3,
-		"number of scheduled task execution must be between 1 and 2, actual: %d", counter)
+		"number of scheduled task execution must be between 1 and 3, actual: %d", counter)
 }
 
 func TestSimpleScheduler_ScheduleAtFixedRate(t *testing.T) {
@@ -99,7 +99,7 @@ func TestSimpleScheduler_ScheduleAtFixedRate(t *testing.T) {
 		atomic.AddInt32(&counter, 1)
 	}, 200*time.Millisecond)
 
-	<-time.After(2 * time.Second)
+	<-time.After(1*time.Second + 950*time.Microsecond)
 	task.Cancel()
 	assert.True(t, counter >= 1 && counter <= 10,
 		"number of scheduled task execution must be between 5 and 10, actual: %d", counter)
@@ -117,10 +117,10 @@ func TestSimpleScheduler_ScheduleAtFixedRateWithStartTimeOption(t *testing.T) {
 	}, 200*time.Millisecond, WithStartTime(
 		Time(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second()+1, now.Nanosecond())))
 
-	<-time.After(3*time.Second + 200*time.Millisecond)
+	<-time.After(3 * time.Second)
 	task.Cancel()
 	assert.True(t, counter >= 5 && counter <= 10,
-		"number of scheduled task execution must be between 5 and 10")
+		"number of scheduled task execution must be between 5 and 10, actual: %d", counter)
 }
 
 func TestSimpleScheduler_ScheduleWithCron(t *testing.T) {
@@ -136,5 +136,5 @@ func TestSimpleScheduler_ScheduleWithCron(t *testing.T) {
 	<-time.After(10 * time.Second)
 	task.Cancel()
 	assert.True(t, counter >= 5,
-		"number of scheduled task execution must be at least 5")
+		"number of scheduled task execution must be at least 5, actual: %d", counter)
 }

@@ -97,28 +97,28 @@ func NewScheduledRunnableTask(id int, task Task, triggerTime time.Time, period t
 	}
 }
 
-func (schedulerRunnableTask *ScheduledRunnableTask) Cancel() {
-	schedulerRunnableTask.taskMu.Lock()
-	defer schedulerRunnableTask.taskMu.Unlock()
-	schedulerRunnableTask.cancelled = true
+func (scheduledRunnableTask *ScheduledRunnableTask) Cancel() {
+	scheduledRunnableTask.taskMu.Lock()
+	defer scheduledRunnableTask.taskMu.Unlock()
+	scheduledRunnableTask.cancelled = true
 }
 
-func (schedulerRunnableTask *ScheduledRunnableTask) IsCancelled() bool {
-	schedulerRunnableTask.taskMu.Lock()
-	defer schedulerRunnableTask.taskMu.Unlock()
-	return schedulerRunnableTask.cancelled
+func (scheduledRunnableTask *ScheduledRunnableTask) IsCancelled() bool {
+	scheduledRunnableTask.taskMu.Lock()
+	defer scheduledRunnableTask.taskMu.Unlock()
+	return scheduledRunnableTask.cancelled
 }
 
-func (schedulerRunnableTask *ScheduledRunnableTask) getDelay() time.Duration {
-	return schedulerRunnableTask.triggerTime.Sub(time.Now())
+func (scheduledRunnableTask *ScheduledRunnableTask) getDelay() time.Duration {
+	return scheduledRunnableTask.triggerTime.Sub(time.Now())
 }
 
-func (schedulerRunnableTask *ScheduledRunnableTask) isPeriodic() bool {
-	return schedulerRunnableTask.period != 0
+func (scheduledRunnableTask *ScheduledRunnableTask) isPeriodic() bool {
+	return scheduledRunnableTask.period != 0
 }
 
-func (schedulerRunnableTask *ScheduledRunnableTask) isFixedRate() bool {
-	return schedulerRunnableTask.fixedRate
+func (scheduledRunnableTask *ScheduledRunnableTask) isFixedRate() bool {
+	return scheduledRunnableTask.fixedRate
 }
 
 type ScheduledTaskQueue []*ScheduledRunnableTask

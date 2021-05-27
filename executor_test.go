@@ -66,7 +66,7 @@ func TestScheduledTaskExecutor_ScheduleWithFixedDelay(t *testing.T) {
 	<-time.After(1*time.Second + 500*time.Millisecond)
 	task.Cancel()
 	assert.True(t, counter >= 1 && counter <= 3,
-		"number of scheduled task execution must be between 1 and 2, actual: %d", counter)
+		"number of scheduled task execution must be between 1 and 3, actual: %d", counter)
 }
 
 func TestScheduledTaskExecutor_ScheduleWithFixedDelayWithInitialDelay(t *testing.T) {
@@ -82,7 +82,7 @@ func TestScheduledTaskExecutor_ScheduleWithFixedDelayWithInitialDelay(t *testing
 	<-time.After(2*time.Second + 500*time.Millisecond)
 	task.Cancel()
 	assert.True(t, counter >= 1 && counter <= 3,
-		"number of scheduled task execution must be between 1 and 2, actual: %d", counter)
+		"number of scheduled task execution must be between 1 and 3, actual: %d", counter)
 }
 
 func TestScheduledTaskExecutor_ScheduleAtFixedRate(t *testing.T) {
@@ -110,8 +110,8 @@ func TestScheduledTaskExecutor_ScheduleAtFixedRateWithInitialDelay(t *testing.T)
 		<-time.After(500 * time.Millisecond)
 	}, 1*time.Second, 200*time.Millisecond)
 
-	<-time.After(3*time.Second + 200*time.Millisecond)
+	<-time.After(3 * time.Second)
 	task.Cancel()
 	assert.True(t, counter >= 5 && counter <= 10,
-		"number of scheduled task execution must be between 5 and 10")
+		"number of scheduled task execution must be between 5 and 10, actual: %d", counter)
 }

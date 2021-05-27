@@ -1,6 +1,8 @@
 package chrono
 
-import "context"
+import (
+	"context"
+)
 
 type TaskRunner interface {
 	Run(task Task)
@@ -10,9 +12,15 @@ type SimpleTaskRunner struct {
 }
 
 func NewDefaultTaskRunner() TaskRunner {
+	return NewSimpleTaskRunner()
+}
+
+func NewSimpleTaskRunner() *SimpleTaskRunner {
 	return &SimpleTaskRunner{}
 }
 
 func (runner *SimpleTaskRunner) Run(task Task) {
-	task(context.Background())
+	go func() {
+		task(context.Background())
+	}()
 }
