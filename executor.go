@@ -10,6 +10,7 @@ type ScheduledExecutor interface {
 	Schedule(task Task, delay time.Duration) ScheduledTask
 	ScheduleWithFixedDelay(task Task, initialDelay time.Duration, delay time.Duration) ScheduledTask
 	ScheduleAtFixedRate(task Task, initialDelay time.Duration, period time.Duration) ScheduledTask
+	IsShutdown() bool
 	Shutdown() chan bool
 }
 
@@ -21,7 +22,6 @@ type ScheduledTaskExecutor struct {
 	taskWaitGroup         sync.WaitGroup
 	taskQueue             ScheduledTaskQueue
 	newTaskChannel        chan *ScheduledRunnableTask
-	removeTaskChannel     chan *ScheduledRunnableTask
 	rescheduleTaskChannel chan *ScheduledRunnableTask
 	taskRunner            TaskRunner
 	shutdownChannel       chan chan bool
@@ -41,7 +41,6 @@ func NewScheduledTaskExecutor(runner TaskRunner) *ScheduledTaskExecutor {
 		taskQueue:             make(ScheduledTaskQueue, 0),
 		newTaskChannel:        make(chan *ScheduledRunnableTask),
 		rescheduleTaskChannel: make(chan *ScheduledRunnableTask),
-		removeTaskChannel:     make(chan *ScheduledRunnableTask),
 		taskRunner:            runner,
 		shutdownChannel:       make(chan chan bool),
 	}
@@ -116,16 +115,22 @@ func (executor *ScheduledTaskExecutor) ScheduleAtFixedRate(task Task, initialDel
 	return scheduledTask
 }
 
+func (executor *ScheduledTaskExecutor) IsShutdown() bool {
+	executor.executorMu.Lock()
+	defer executor.executorMu.Unlock()
+	return executor.isShutdown
+}
+
 func (executor *ScheduledTaskExecutor) Shutdown() chan bool {
 	executor.executorMu.Lock()
 	defer executor.executorMu.Unlock()
 
 	if executor.isShutdown {
-		executor.isShutdown = true
 		executor.executorMu.Unlock()
-
 		panic("executor is already shut down")
 	}
+
+	executor.isShutdown = true
 
 	stoppedChan := make(chan bool)
 	executor.shutdownChannel <- stoppedChan
@@ -187,19 +192,8 @@ func (executor *ScheduledTaskExecutor) run() {
 			case rescheduledTask := <-executor.rescheduleTaskChannel:
 				executor.timer.Stop()
 				executor.taskQueue = append(executor.taskQueue, rescheduledTask)
-			case task := <-executor.removeTaskChannel:
-				executor.timer.Stop()
-
-				taskIndex := -1
-				for index, scheduledTask := range executor.taskQueue {
-					if scheduledTask.id == task.id {
-						taskIndex = index
-						break
-					}
-				}
-
-				executor.taskQueue = append(executor.taskQueue[:taskIndex], executor.taskQueue[taskIndex+1:]...)
 			case stoppedChan := <-executor.shutdownChannel:
+				executor.timer.Stop()
 				executor.taskWaitGroup.Wait()
 				stoppedChan <- true
 				return
@@ -217,6 +211,10 @@ func (executor *ScheduledTaskExecutor) startTask(scheduledRunnableTask *Schedule
 
 	executor.taskRunner.Run(func(ctx context.Context) {
 		defer func() {
+			if executor.IsShutdown() {
+				scheduledRunnableTask.Cancel()
+			}
+
 			executor.taskWaitGroup.Done()
 
 			if !scheduledRunnableTask.isPeriodic() {

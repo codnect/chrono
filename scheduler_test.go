@@ -138,3 +138,24 @@ func TestSimpleScheduler_ScheduleWithCron(t *testing.T) {
 	assert.True(t, counter >= 5,
 		"number of scheduled task execution must be at least 5, actual: %d", counter)
 }
+
+func TestSimpleScheduler_Shutdown(t *testing.T) {
+	scheduler := NewSimpleScheduler(NewDefaultScheduledExecutor())
+
+	var counter int32
+
+	scheduler.ScheduleAtFixedRate(func(ctx context.Context) {
+		atomic.AddInt32(&counter, 1)
+		<-time.After(500 * time.Millisecond)
+	}, 1*time.Second)
+
+	<-time.After(2 * time.Second)
+	scheduler.Shutdown()
+
+	expected := counter
+	<-time.After(3 * time.Second)
+
+	assert.True(t, scheduler.IsShutdown())
+	assert.Equal(t, expected, counter,
+		"after shutdown, previously scheduled tasks should not be rescheduled", counter)
+}

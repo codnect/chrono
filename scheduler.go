@@ -9,6 +9,7 @@ type Scheduler interface {
 	ScheduleWithCron(task Task, expression string, options ...Option) ScheduledTask
 	ScheduleWithFixedDelay(task Task, delay time.Duration, options ...Option) ScheduledTask
 	ScheduleAtFixedRate(task Task, period time.Duration, options ...Option) ScheduledTask
+	IsShutdown() bool
 	Shutdown() chan bool
 }
 
@@ -52,6 +53,10 @@ func (scheduler *SimpleScheduler) ScheduleWithFixedDelay(task Task, delay time.D
 func (scheduler *SimpleScheduler) ScheduleAtFixedRate(task Task, period time.Duration, options ...Option) ScheduledTask {
 	schedulerTask := NewSchedulerTask(task, options...)
 	return scheduler.executor.ScheduleAtFixedRate(schedulerTask.task, schedulerTask.GetInitialDelay(), period)
+}
+
+func (scheduler *SimpleScheduler) IsShutdown() bool {
+	return scheduler.executor.IsShutdown()
 }
 
 func (scheduler *SimpleScheduler) Shutdown() chan bool {

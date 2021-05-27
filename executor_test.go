@@ -115,3 +115,44 @@ func TestScheduledTaskExecutor_ScheduleAtFixedRateWithInitialDelay(t *testing.T)
 	assert.True(t, counter >= 5 && counter <= 10,
 		"number of scheduled task execution must be between 5 and 10, actual: %d", counter)
 }
+
+func TestScheduledTaskExecutor_Shutdown(t *testing.T) {
+	executor := NewScheduledTaskExecutor(NewDefaultTaskRunner())
+
+	var counter int32
+
+	executor.ScheduleAtFixedRate(func(ctx context.Context) {
+		atomic.AddInt32(&counter, 1)
+		<-time.After(500 * time.Millisecond)
+	}, 1*time.Second, 200*time.Millisecond)
+
+	<-time.After(2 * time.Second)
+	executor.Shutdown()
+
+	expected := counter
+	<-time.After(3 * time.Second)
+
+	assert.True(t, executor.IsShutdown())
+	assert.Equal(t, expected, counter,
+		"after shutdown, previously scheduled tasks should not be rescheduled", counter)
+}
+
+func TestScheduledTaskExecutor_NoNewTaskShouldBeAccepted_AfterShutdown(t *testing.T) {
+	executor := NewScheduledTaskExecutor(NewDefaultTaskRunner())
+	executor.Shutdown()
+
+	assert.Panics(t, func() {
+		executor.Schedule(func(ctx context.Context) {
+		}, 1*time.Second)
+	})
+
+	assert.Panics(t, func() {
+		executor.ScheduleWithFixedDelay(func(ctx context.Context) {
+		}, 1*time.Second, 1*time.Second)
+	})
+
+	assert.Panics(t, func() {
+		executor.ScheduleAtFixedRate(func(ctx context.Context) {
+		}, 1*time.Second, 200*time.Millisecond)
+	})
+}
