@@ -634,9 +634,12 @@ func TestParseCronExpression_Errors(t *testing.T) {
 		{expression: "test * * * * *", errorString: "the value in field SECOND must be number : test"},
 		{expression: "5 * * * *", errorString: "cron expression must consist of 6 fields : found 5 in \"5 * * * *\""},
 		{expression: "61 * * * * *", errorString: "the value in field SECOND must be between 0 and 59"},
+		{expression: "61 * * * * *", errorString: "the value in field SECOND must be between 0 and 59"},
 		{expression: "* 65 * * * *", errorString: "the value in field MINUTE must be between 0 and 59"},
 		{expression: "* * * 0 * *", errorString: "the value in field DAY_OF_MONTH must be between 1 and 31"},
 		{expression: "* * 1-12/0 * * *", errorString: "step must be 1 or higher in \"1-12/0\""},
+		{expression: "* * 0-32/5 * * *", errorString: "the value in field HOUR must be between 0 and 23"},
+		{expression: "* * * * 0-10/2 *", errorString: "the value in field MONTH must be between 1 and 12"},
 		{expression: "* * 1-12/test * * *", errorString: "step must be number : \"test\""},
 	}
 
