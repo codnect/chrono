@@ -2,6 +2,7 @@ package chrono
 
 import (
 	"context"
+	"errors"
 	"sort"
 	"sync"
 	"time"
@@ -84,6 +85,10 @@ type ScheduledRunnableTask struct {
 }
 
 func NewScheduledRunnableTask(id int, task Task, triggerTime time.Time, period time.Duration, fixedRate bool) *ScheduledRunnableTask {
+	if task == nil {
+		panic("task cannot be nil")
+	}
+
 	if period < 0 {
 		period = 0
 	}
@@ -150,6 +155,10 @@ type TriggerTask struct {
 }
 
 func NewTriggerTask(task Task, executor ScheduledExecutor, trigger Trigger) *TriggerTask {
+	if task == nil {
+		panic("task cannot be nil")
+	}
+
 	if executor == nil {
 		panic("executor cannot be nil")
 	}
@@ -178,21 +187,26 @@ func (task *TriggerTask) IsCancelled() bool {
 	return task.currentScheduledTask.IsCancelled()
 }
 
-func (task *TriggerTask) Schedule() ScheduledTask {
+func (task *TriggerTask) Schedule() (ScheduledTask, error) {
 	task.triggerContextMu.Lock()
 	defer task.triggerContextMu.Unlock()
 
 	task.nextTriggerTime = task.trigger.NextExecutionTime(task.triggerContext)
 
 	if task.nextTriggerTime.IsZero() {
-		return nil
+		return nil, errors.New("could not schedule task because of the fact that schedule time is zero")
 	}
 
 	initialDelay := task.nextTriggerTime.Sub(time.Now())
 
-	task.currentScheduledTask = task.executor.Schedule(task.Run, initialDelay).(*ScheduledRunnableTask)
+	currentScheduledTask, err := task.executor.Schedule(task.Run, initialDelay)
 
-	return task
+	if err != nil {
+		return nil, err
+	}
+
+	task.currentScheduledTask = currentScheduledTask.(*ScheduledRunnableTask)
+	return task, nil
 }
 
 func (task *TriggerTask) Run(ctx context.Context) {

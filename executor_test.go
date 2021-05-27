@@ -13,9 +13,11 @@ func TestNewDefaultScheduledExecutor(t *testing.T) {
 
 	var counter int32
 
-	task := executor.Schedule(func(ctx context.Context) {
+	task, err := executor.Schedule(func(ctx context.Context) {
 		atomic.AddInt32(&counter, 1)
 	}, 1*time.Second)
+
+	assert.Nil(t, err)
 
 	<-time.After(2 * time.Second)
 	assert.True(t, task.IsCancelled(), "scheduled task must have been cancelled")
@@ -28,9 +30,11 @@ func TestScheduledTaskExecutor_WithoutTaskRunner(t *testing.T) {
 
 	var counter int32
 
-	task := executor.Schedule(func(ctx context.Context) {
+	task, err := executor.Schedule(func(ctx context.Context) {
 		atomic.AddInt32(&counter, 1)
 	}, 1*time.Second)
+
+	assert.Nil(t, err)
 
 	<-time.After(2 * time.Second)
 	assert.True(t, task.IsCancelled(), "scheduled task must have been cancelled")
@@ -43,9 +47,11 @@ func TestScheduledTaskExecutor_Schedule_OneShotTask(t *testing.T) {
 
 	var counter int32
 
-	task := executor.Schedule(func(ctx context.Context) {
+	task, err := executor.Schedule(func(ctx context.Context) {
 		atomic.AddInt32(&counter, 1)
 	}, 1*time.Second)
+
+	assert.Nil(t, err)
 
 	<-time.After(2 * time.Second)
 	assert.True(t, task.IsCancelled(), "scheduled task must have been cancelled")
@@ -58,10 +64,12 @@ func TestScheduledTaskExecutor_ScheduleWithFixedDelay(t *testing.T) {
 
 	var counter int32
 
-	task := executor.ScheduleWithFixedDelay(func(ctx context.Context) {
+	task, err := executor.ScheduleWithFixedDelay(func(ctx context.Context) {
 		atomic.AddInt32(&counter, 1)
 		<-time.After(500 * time.Millisecond)
 	}, 0, 200*time.Millisecond)
+
+	assert.Nil(t, err)
 
 	<-time.After(1*time.Second + 500*time.Millisecond)
 	task.Cancel()
@@ -74,10 +82,12 @@ func TestScheduledTaskExecutor_ScheduleWithFixedDelayWithInitialDelay(t *testing
 
 	var counter int32
 
-	task := executor.ScheduleWithFixedDelay(func(ctx context.Context) {
+	task, err := executor.ScheduleWithFixedDelay(func(ctx context.Context) {
 		atomic.AddInt32(&counter, 1)
 		<-time.After(500 * time.Millisecond)
 	}, 1*time.Second, 200*time.Millisecond)
+
+	assert.Nil(t, err)
 
 	<-time.After(2*time.Second + 500*time.Millisecond)
 	task.Cancel()
@@ -90,9 +100,11 @@ func TestScheduledTaskExecutor_ScheduleAtFixedRate(t *testing.T) {
 
 	var counter int32
 
-	task := executor.ScheduleAtFixedRate(func(ctx context.Context) {
+	task, err := executor.ScheduleAtFixedRate(func(ctx context.Context) {
 		atomic.AddInt32(&counter, 1)
 	}, 0, 200*time.Millisecond)
+
+	assert.Nil(t, err)
 
 	<-time.After(2*time.Second - 50*time.Millisecond)
 	task.Cancel()
@@ -105,10 +117,12 @@ func TestScheduledTaskExecutor_ScheduleAtFixedRateWithInitialDelay(t *testing.T)
 
 	var counter int32
 
-	task := executor.ScheduleAtFixedRate(func(ctx context.Context) {
+	task, err := executor.ScheduleAtFixedRate(func(ctx context.Context) {
 		atomic.AddInt32(&counter, 1)
 		<-time.After(500 * time.Millisecond)
 	}, 1*time.Second, 200*time.Millisecond)
+
+	assert.Nil(t, err)
 
 	<-time.After(3*time.Second - 50*time.Millisecond)
 	task.Cancel()
@@ -141,20 +155,20 @@ func TestScheduledTaskExecutor_NoNewTaskShouldBeAccepted_AfterShutdown(t *testin
 	executor := NewScheduledTaskExecutor(NewDefaultTaskRunner())
 	executor.Shutdown()
 
-	assert.Panics(t, func() {
-		executor.Schedule(func(ctx context.Context) {
-		}, 1*time.Second)
-	})
+	var err error
+	_, err = executor.Schedule(func(ctx context.Context) {
+	}, 1*time.Second)
 
-	assert.Panics(t, func() {
-		executor.ScheduleWithFixedDelay(func(ctx context.Context) {
-		}, 1*time.Second, 1*time.Second)
-	})
+	assert.NotNil(t, err)
 
-	assert.Panics(t, func() {
-		executor.ScheduleAtFixedRate(func(ctx context.Context) {
-		}, 1*time.Second, 200*time.Millisecond)
-	})
+	_, err = executor.ScheduleWithFixedDelay(func(ctx context.Context) {
+	}, 1*time.Second, 1*time.Second)
+
+	assert.NotNil(t, err)
+
+	_, err = executor.ScheduleAtFixedRate(func(ctx context.Context) {
+	}, 1*time.Second, 200*time.Millisecond)
+	assert.NotNil(t, err)
 }
 
 func TestScheduledTaskExecutor_Schedule_MultiTasks(t *testing.T) {
@@ -164,21 +178,27 @@ func TestScheduledTaskExecutor_Schedule_MultiTasks(t *testing.T) {
 	var task2Counter int32
 	var task3Counter int32
 
-	task1 := executor.ScheduleAtFixedRate(func(ctx context.Context) {
+	task1, err := executor.ScheduleAtFixedRate(func(ctx context.Context) {
 		atomic.AddInt32(&task1Counter, 1)
 		<-time.After(500 * time.Millisecond)
 	}, 1*time.Second, 200*time.Millisecond)
 
-	task2 := executor.ScheduleWithFixedDelay(func(ctx context.Context) {
+	assert.Nil(t, err)
+
+	task2, err := executor.ScheduleWithFixedDelay(func(ctx context.Context) {
 		atomic.AddInt32(&task2Counter, 1)
 		<-time.After(500 * time.Millisecond)
 	}, 0, 200*time.Millisecond)
 
-	task3 := executor.ScheduleAtFixedRate(func(ctx context.Context) {
+	assert.Nil(t, err)
+
+	task3, err := executor.ScheduleAtFixedRate(func(ctx context.Context) {
 		atomic.AddInt32(&task3Counter, 1)
 	}, 0, 200*time.Millisecond)
 
-	<-time.After(2 * time.Second)
+	assert.Nil(t, err)
+
+	<-time.After(2*time.Second - 50*time.Millisecond)
 
 	task1.Cancel()
 	task2.Cancel()
@@ -192,4 +212,32 @@ func TestScheduledTaskExecutor_Schedule_MultiTasks(t *testing.T) {
 
 	assert.True(t, task3Counter >= 1 && task3Counter <= 10,
 		"number of scheduled task execution must be between 5 and 10, actual: %d", task3Counter)
+}
+
+func TestScheduledTaskExecutor_ScheduleWithNilTask(t *testing.T) {
+	executor := NewScheduledTaskExecutor(NewDefaultTaskRunner())
+
+	var task ScheduledTask
+	var err error
+
+	task, err = executor.Schedule(nil, 1*time.Second)
+	assert.Nil(t, task)
+	assert.NotNil(t, err)
+
+	task, err = executor.ScheduleWithFixedDelay(nil, 1*time.Second, 1*time.Second)
+	assert.Nil(t, task)
+	assert.NotNil(t, err)
+
+	task, err = executor.ScheduleAtFixedRate(nil, 1*time.Second, 1*time.Second)
+	assert.Nil(t, task)
+	assert.NotNil(t, err)
+}
+
+func TestScheduledTaskExecutor_Shutdown_TerminatedExecutor(t *testing.T) {
+	executor := NewScheduledTaskExecutor(NewDefaultTaskRunner())
+	executor.Shutdown()
+
+	assert.Panics(t, func() {
+		executor.Shutdown()
+	})
 }

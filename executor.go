@@ -2,14 +2,15 @@ package chrono
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 )
 
 type ScheduledExecutor interface {
-	Schedule(task Task, delay time.Duration) ScheduledTask
-	ScheduleWithFixedDelay(task Task, initialDelay time.Duration, delay time.Duration) ScheduledTask
-	ScheduleAtFixedRate(task Task, initialDelay time.Duration, period time.Duration) ScheduledTask
+	Schedule(task Task, delay time.Duration) (ScheduledTask, error)
+	ScheduleWithFixedDelay(task Task, initialDelay time.Duration, delay time.Duration) (ScheduledTask, error)
+	ScheduleAtFixedRate(task Task, initialDelay time.Duration, period time.Duration) (ScheduledTask, error)
 	IsShutdown() bool
 	Shutdown() chan bool
 }
@@ -52,16 +53,16 @@ func NewScheduledTaskExecutor(runner TaskRunner) *ScheduledTaskExecutor {
 	return executor
 }
 
-func (executor *ScheduledTaskExecutor) Schedule(task Task, delay time.Duration) ScheduledTask {
+func (executor *ScheduledTaskExecutor) Schedule(task Task, delay time.Duration) (ScheduledTask, error) {
 	if task == nil {
-		panic("task cannot be nil")
+		return nil, errors.New("task cannot be nil")
 	}
 
 	executor.executorMu.Lock()
 
 	if executor.isShutdown {
 		executor.executorMu.Unlock()
-		panic("no new task won't be accepted because executor is already shut down")
+		return nil, errors.New("no new task won't be accepted because executor is already shut down")
 	}
 
 	executor.nextSequence++
@@ -70,19 +71,19 @@ func (executor *ScheduledTaskExecutor) Schedule(task Task, delay time.Duration) 
 
 	executor.addNewTask(scheduledTask)
 
-	return scheduledTask
+	return scheduledTask, nil
 }
 
-func (executor *ScheduledTaskExecutor) ScheduleWithFixedDelay(task Task, initialDelay time.Duration, delay time.Duration) ScheduledTask {
+func (executor *ScheduledTaskExecutor) ScheduleWithFixedDelay(task Task, initialDelay time.Duration, delay time.Duration) (ScheduledTask, error) {
 	if task == nil {
-		panic("task cannot be nil")
+		return nil, errors.New("task cannot be nil")
 	}
 
 	executor.executorMu.Lock()
 
 	if executor.isShutdown {
 		executor.executorMu.Unlock()
-		panic("no new task won't be accepted because executor is already shut down")
+		return nil, errors.New("no new task won't be accepted because executor is already shut down")
 	}
 
 	executor.nextSequence++
@@ -91,19 +92,19 @@ func (executor *ScheduledTaskExecutor) ScheduleWithFixedDelay(task Task, initial
 
 	executor.addNewTask(scheduledTask)
 
-	return scheduledTask
+	return scheduledTask, nil
 }
 
-func (executor *ScheduledTaskExecutor) ScheduleAtFixedRate(task Task, initialDelay time.Duration, period time.Duration) ScheduledTask {
+func (executor *ScheduledTaskExecutor) ScheduleAtFixedRate(task Task, initialDelay time.Duration, period time.Duration) (ScheduledTask, error) {
 	if task == nil {
-		panic("task cannot be nil")
+		return nil, errors.New("task cannot be nil")
 	}
 
 	executor.executorMu.Lock()
 
 	if executor.isShutdown {
 		executor.executorMu.Unlock()
-		panic("no new task won't be accepted because executor is already shut down")
+		return nil, errors.New("no new task won't be accepted because executor is already shut down")
 	}
 
 	executor.nextSequence++
@@ -112,7 +113,7 @@ func (executor *ScheduledTaskExecutor) ScheduleAtFixedRate(task Task, initialDel
 
 	executor.addNewTask(scheduledTask)
 
-	return scheduledTask
+	return scheduledTask, nil
 }
 
 func (executor *ScheduledTaskExecutor) IsShutdown() bool {
@@ -126,7 +127,6 @@ func (executor *ScheduledTaskExecutor) Shutdown() chan bool {
 	defer executor.executorMu.Unlock()
 
 	if executor.isShutdown {
-		executor.executorMu.Unlock()
 		panic("executor is already shut down")
 	}
 

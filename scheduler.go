@@ -5,10 +5,10 @@ import (
 )
 
 type Scheduler interface {
-	Schedule(task Task, options ...Option) ScheduledTask
-	ScheduleWithCron(task Task, expression string, options ...Option) ScheduledTask
-	ScheduleWithFixedDelay(task Task, delay time.Duration, options ...Option) ScheduledTask
-	ScheduleAtFixedRate(task Task, period time.Duration, options ...Option) ScheduledTask
+	Schedule(task Task, options ...Option) (ScheduledTask, error)
+	ScheduleWithCron(task Task, expression string, options ...Option) (ScheduledTask, error)
+	ScheduleWithFixedDelay(task Task, delay time.Duration, options ...Option) (ScheduledTask, error)
+	ScheduleAtFixedRate(task Task, period time.Duration, options ...Option) (ScheduledTask, error)
 	IsShutdown() bool
 	Shutdown() chan bool
 }
@@ -34,23 +34,23 @@ func NewDefaultScheduler() Scheduler {
 	return NewSimpleScheduler(NewDefaultScheduledExecutor())
 }
 
-func (scheduler *SimpleScheduler) Schedule(task Task, options ...Option) ScheduledTask {
+func (scheduler *SimpleScheduler) Schedule(task Task, options ...Option) (ScheduledTask, error) {
 	schedulerTask := NewSchedulerTask(task, options...)
 	return scheduler.executor.Schedule(task, schedulerTask.GetInitialDelay())
 }
 
-func (scheduler *SimpleScheduler) ScheduleWithCron(task Task, expression string, options ...Option) ScheduledTask {
+func (scheduler *SimpleScheduler) ScheduleWithCron(task Task, expression string, options ...Option) (ScheduledTask, error) {
 	schedulerTask := NewSchedulerTask(task, options...)
 	triggerTask := NewTriggerTask(schedulerTask.task, scheduler.executor, NewCronTrigger(expression, schedulerTask.location))
 	return triggerTask.Schedule()
 }
 
-func (scheduler *SimpleScheduler) ScheduleWithFixedDelay(task Task, delay time.Duration, options ...Option) ScheduledTask {
+func (scheduler *SimpleScheduler) ScheduleWithFixedDelay(task Task, delay time.Duration, options ...Option) (ScheduledTask, error) {
 	schedulerTask := NewSchedulerTask(task, options...)
 	return scheduler.executor.ScheduleWithFixedDelay(schedulerTask.task, schedulerTask.GetInitialDelay(), delay)
 }
 
-func (scheduler *SimpleScheduler) ScheduleAtFixedRate(task Task, period time.Duration, options ...Option) ScheduledTask {
+func (scheduler *SimpleScheduler) ScheduleAtFixedRate(task Task, period time.Duration, options ...Option) (ScheduledTask, error) {
 	schedulerTask := NewSchedulerTask(task, options...)
 	return scheduler.executor.ScheduleAtFixedRate(schedulerTask.task, schedulerTask.GetInitialDelay(), period)
 }

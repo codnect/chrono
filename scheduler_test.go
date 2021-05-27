@@ -14,9 +14,11 @@ func TestDefaultScheduler(t *testing.T) {
 	var counter int32
 	now := time.Now()
 
-	task := scheduler.Schedule(func(ctx context.Context) {
+	task, err := scheduler.Schedule(func(ctx context.Context) {
 		atomic.AddInt32(&counter, 1)
 	}, WithStartTime(Time(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second()+1, now.Nanosecond())))
+
+	assert.Nil(t, err)
 
 	<-time.After(2 * time.Second)
 	assert.True(t, task.IsCancelled(), "scheduled task must have been cancelled")
@@ -30,9 +32,11 @@ func TestSimpleScheduler_WithoutScheduledExecutor(t *testing.T) {
 	var counter int32
 	now := time.Now()
 
-	task := scheduler.Schedule(func(ctx context.Context) {
+	task, err := scheduler.Schedule(func(ctx context.Context) {
 		atomic.AddInt32(&counter, 1)
 	}, WithStartTime(Time(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second()+1, now.Nanosecond())))
+
+	assert.Nil(t, err)
 
 	<-time.After(2 * time.Second)
 	assert.True(t, task.IsCancelled(), "scheduled task must have been cancelled")
@@ -46,9 +50,11 @@ func TestSimpleScheduler_Schedule_OneShotTask(t *testing.T) {
 	var counter int32
 	now := time.Now()
 
-	task := scheduler.Schedule(func(ctx context.Context) {
+	task, err := scheduler.Schedule(func(ctx context.Context) {
 		atomic.AddInt32(&counter, 1)
 	}, WithStartTime(Time(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second()+1, now.Nanosecond())))
+
+	assert.Nil(t, err)
 
 	<-time.After(2 * time.Second)
 	assert.True(t, task.IsCancelled(), "scheduled task must have been cancelled")
@@ -61,10 +67,12 @@ func TestSimpleScheduler_ScheduleWithFixedDelay(t *testing.T) {
 
 	var counter int32
 
-	task := scheduler.ScheduleWithFixedDelay(func(ctx context.Context) {
+	task, err := scheduler.ScheduleWithFixedDelay(func(ctx context.Context) {
 		atomic.AddInt32(&counter, 1)
 		<-time.After(500 * time.Millisecond)
 	}, 200*time.Millisecond)
+
+	assert.Nil(t, err)
 
 	<-time.After(1*time.Second + 500*time.Millisecond)
 	task.Cancel()
@@ -78,11 +86,13 @@ func TestSimpleScheduler_ScheduleWithFixedDelayWithStartTimeOption(t *testing.T)
 	var counter int32
 	now := time.Now()
 
-	task := scheduler.ScheduleWithFixedDelay(func(ctx context.Context) {
+	task, err := scheduler.ScheduleWithFixedDelay(func(ctx context.Context) {
 		atomic.AddInt32(&counter, 1)
 		<-time.After(500 * time.Millisecond)
 	}, 200*time.Millisecond, WithStartTime(
 		Time(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second()+1, now.Nanosecond())))
+
+	assert.Nil(t, err)
 
 	<-time.After(2*time.Second + 500*time.Millisecond)
 	task.Cancel()
@@ -95,9 +105,11 @@ func TestSimpleScheduler_ScheduleAtFixedRate(t *testing.T) {
 
 	var counter int32
 
-	task := scheduler.ScheduleAtFixedRate(func(ctx context.Context) {
+	task, err := scheduler.ScheduleAtFixedRate(func(ctx context.Context) {
 		atomic.AddInt32(&counter, 1)
 	}, 200*time.Millisecond)
+
+	assert.Nil(t, err)
 
 	<-time.After(1*time.Second + 950*time.Microsecond)
 	task.Cancel()
@@ -111,11 +123,13 @@ func TestSimpleScheduler_ScheduleAtFixedRateWithStartTimeOption(t *testing.T) {
 	var counter int32
 	now := time.Now()
 
-	task := scheduler.ScheduleAtFixedRate(func(ctx context.Context) {
+	task, err := scheduler.ScheduleAtFixedRate(func(ctx context.Context) {
 		atomic.AddInt32(&counter, 1)
 		<-time.After(500 * time.Millisecond)
 	}, 200*time.Millisecond, WithStartTime(
 		Time(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second()+1, now.Nanosecond())))
+
+	assert.Nil(t, err)
 
 	<-time.After(3*time.Second - 50*time.Millisecond)
 	task.Cancel()
@@ -128,10 +142,12 @@ func TestSimpleScheduler_ScheduleWithCron(t *testing.T) {
 
 	var counter int32
 
-	task := scheduler.ScheduleWithCron(func(ctx context.Context) {
+	task, err := scheduler.ScheduleWithCron(func(ctx context.Context) {
 		atomic.AddInt32(&counter, 1)
 		<-time.After(500 * time.Millisecond)
 	}, "0-59/2 * * * * *")
+
+	assert.Nil(t, err)
 
 	<-time.After(10 * time.Second)
 	task.Cancel()
@@ -144,10 +160,12 @@ func TestSimpleScheduler_Shutdown(t *testing.T) {
 
 	var counter int32
 
-	scheduler.ScheduleAtFixedRate(func(ctx context.Context) {
+	_, err := scheduler.ScheduleAtFixedRate(func(ctx context.Context) {
 		atomic.AddInt32(&counter, 1)
 		<-time.After(500 * time.Millisecond)
 	}, 1*time.Second)
+
+	assert.Nil(t, err)
 
 	<-time.After(2 * time.Second)
 	scheduler.Shutdown()
