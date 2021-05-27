@@ -123,10 +123,6 @@ func (scheduledRunnableTask *ScheduledRunnableTask) isFixedRate() bool {
 
 type ScheduledTaskQueue []*ScheduledRunnableTask
 
-func (queue ScheduledTaskQueue) IsEmpty() bool {
-	return queue.Len() == 0
-}
-
 func (queue ScheduledTaskQueue) Len() int {
 	return len(queue)
 }

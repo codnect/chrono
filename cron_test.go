@@ -1,6 +1,7 @@
 package chrono
 
 import (
+	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
 )
@@ -622,4 +623,35 @@ func TestCronExpression_NextTime(t *testing.T) {
 		}
 	}
 
+}
+
+func TestParseCronExpression_Errors(t *testing.T) {
+	testCases := []struct {
+		expression  string
+		errorString string
+	}{
+		{expression: "", errorString: "cron expression must not be empty"},
+		{expression: "test * * * * *", errorString: "the value in field SECOND must be number : test"},
+		{expression: "5 * * * *", errorString: "cron expression must consist of 6 fields : found 5 in \"5 * * * *\""},
+		{expression: "61 * * * * *", errorString: "the value in field SECOND must be between 0 and 59"},
+		{expression: "* 65 * * * *", errorString: "the value in field MINUTE must be between 0 and 59"},
+		{expression: "* * * 0 * *", errorString: "the value in field DAY_OF_MONTH must be between 1 and 31"},
+		{expression: "* * 1-12/0 * * *", errorString: "step must be 1 or higher in \"1-12/0\""},
+		{expression: "* * 1-12/test * * *", errorString: "step must be number : \"test\""},
+	}
+
+	for _, testCase := range testCases {
+		exp, err := ParseCronExpression(testCase.expression)
+		assert.Nil(t, exp, "expression must have been parsed : %s", testCase.expression)
+		assert.NotNil(t, err, "an error must have been occurred")
+		assert.Equal(t, testCase.errorString, err.Error(),
+			"error string must not match, expected : %s, actual :%s", testCase.errorString, err.Error())
+	}
+}
+
+func TestParseField_WhenValueIsEmpty(t *testing.T) {
+	result, err := parseField("", second)
+	assert.Nil(t, result, "result must not have been returned")
+	assert.NotNil(t, err, "an error must have been occurred")
+	assert.Equal(t, "value must not be empty", err.Error())
 }

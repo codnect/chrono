@@ -223,11 +223,11 @@ func parseField(value string, fieldType fieldType) (*cronFieldBits, error) {
 			step, err = strconv.Atoi(stepStr)
 
 			if err != nil {
-				panic(err)
+				return nil, fmt.Errorf("step must be number : \"%s\"", stepStr)
 			}
 
 			if step <= 0 {
-				panic("step must be 1 or higher")
+				return nil, fmt.Errorf("step must be 1 or higher in \"%s\"", value)
 			}
 
 		} else {
