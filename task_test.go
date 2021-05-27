@@ -69,10 +69,9 @@ func (trigger *zeroTrigger) NextExecutionTime(ctx TriggerContext) time.Time {
 }
 
 func TestTriggerTask_Schedule(t *testing.T) {
-	assert.Panics(t, func() {
-		NewTriggerTask(func(ctx context.Context) {}, NewDefaultScheduledExecutor(), &zeroTrigger{})
-
-	})
+	task := NewTriggerTask(func(ctx context.Context) {}, NewDefaultScheduledExecutor(), &zeroTrigger{})
+	_, err := task.Schedule()
+	assert.NotNil(t, err)
 }
 
 type scheduledExecutorMock struct {
