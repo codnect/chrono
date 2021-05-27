@@ -5,23 +5,23 @@ import "time"
 type TriggerContext interface {
 	LastCompletionTime() time.Time
 	LastExecutionTime() time.Time
-	LastScheduledExecutionTime() time.Time
+	LastTriggeredExecutionTime() time.Time
 }
 
 type SimpleTriggerContext struct {
 	lastCompletionTime         time.Time
 	lastExecutionTime          time.Time
-	lastScheduledExecutionTime time.Time
+	lastTriggeredExecutionTime time.Time
 }
 
 func NewSimpleTriggerContext() *SimpleTriggerContext {
 	return &SimpleTriggerContext{}
 }
 
-func (ctx *SimpleTriggerContext) Update(lastCompletionTime time.Time, lastExecutionTime time.Time, lastScheduledExecutionTime time.Time) {
+func (ctx *SimpleTriggerContext) Update(lastCompletionTime time.Time, lastExecutionTime time.Time, lastTriggeredExecutionTime time.Time) {
 	ctx.lastCompletionTime = lastCompletionTime
 	ctx.lastExecutionTime = lastExecutionTime
-	ctx.lastScheduledExecutionTime = lastScheduledExecutionTime
+	ctx.lastTriggeredExecutionTime = lastTriggeredExecutionTime
 }
 
 func (ctx *SimpleTriggerContext) LastCompletionTime() time.Time {
@@ -32,8 +32,8 @@ func (ctx *SimpleTriggerContext) LastExecutionTime() time.Time {
 	return ctx.lastExecutionTime
 }
 
-func (ctx *SimpleTriggerContext) LastScheduledExecutionTime() time.Time {
-	return ctx.lastScheduledExecutionTime
+func (ctx *SimpleTriggerContext) LastTriggeredExecutionTime() time.Time {
+	return ctx.lastTriggeredExecutionTime
 }
 
 type Trigger interface {
@@ -70,7 +70,7 @@ func (trigger *CronTrigger) NextExecutionTime(ctx TriggerContext) time.Time {
 
 	if !lastCompletion.IsZero() {
 
-		lastExecution := ctx.LastScheduledExecutionTime()
+		lastExecution := ctx.LastTriggeredExecutionTime()
 
 		if !lastExecution.IsZero() && now.Before(lastExecution) {
 			now = lastExecution
