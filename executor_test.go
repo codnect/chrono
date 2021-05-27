@@ -94,7 +94,7 @@ func TestScheduledTaskExecutor_ScheduleAtFixedRate(t *testing.T) {
 		atomic.AddInt32(&counter, 1)
 	}, 0, 200*time.Millisecond)
 
-	<-time.After(2 * time.Second)
+	<-time.After(2*time.Second - 50*time.Millisecond)
 	task.Cancel()
 	assert.True(t, counter >= 1 && counter <= 10,
 		"number of scheduled task execution must be between 5 and 10, actual: %d", counter)
@@ -110,7 +110,7 @@ func TestScheduledTaskExecutor_ScheduleAtFixedRateWithInitialDelay(t *testing.T)
 		<-time.After(500 * time.Millisecond)
 	}, 1*time.Second, 200*time.Millisecond)
 
-	<-time.After(3 * time.Second)
+	<-time.After(3*time.Second - 50*time.Millisecond)
 	task.Cancel()
 	assert.True(t, counter >= 5 && counter <= 10,
 		"number of scheduled task execution must be between 5 and 10, actual: %d", counter)
