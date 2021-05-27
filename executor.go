@@ -213,6 +213,8 @@ func (executor *ScheduledTaskExecutor) startTask(scheduledRunnableTask *Schedule
 		defer func() {
 			if executor.IsShutdown() {
 				scheduledRunnableTask.Cancel()
+				executor.taskWaitGroup.Done()
+				return
 			}
 
 			executor.taskWaitGroup.Done()
