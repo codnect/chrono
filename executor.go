@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-type ScheduledExecutor interface {
+type TaskExecutor interface {
 	Schedule(task Task, delay time.Duration) (ScheduledTask, error)
 	ScheduleWithFixedDelay(task Task, initialDelay time.Duration, delay time.Duration) (ScheduledTask, error)
 	ScheduleAtFixedRate(task Task, initialDelay time.Duration, period time.Duration) (ScheduledTask, error)
@@ -15,7 +15,7 @@ type ScheduledExecutor interface {
 	Shutdown() chan bool
 }
 
-type ScheduledTaskExecutor struct {
+type SimpleTaskExecutor struct {
 	nextSequence          int
 	isShutdown            bool
 	executorMu            sync.RWMutex
@@ -28,16 +28,16 @@ type ScheduledTaskExecutor struct {
 	shutdownChannel       chan chan bool
 }
 
-func NewDefaultScheduledExecutor() ScheduledExecutor {
-	return NewScheduledTaskExecutor(NewDefaultTaskRunner())
+func NewDefaultTaskExecutor() TaskExecutor {
+	return NewSimpleTaskExecutor(NewDefaultTaskRunner())
 }
 
-func NewScheduledTaskExecutor(runner TaskRunner) *ScheduledTaskExecutor {
+func NewSimpleTaskExecutor(runner TaskRunner) *SimpleTaskExecutor {
 	if runner == nil {
 		runner = NewDefaultTaskRunner()
 	}
 
-	executor := &ScheduledTaskExecutor{
+	executor := &SimpleTaskExecutor{
 		timer:                 time.NewTimer(1 * time.Hour),
 		taskQueue:             make(ScheduledTaskQueue, 0),
 		newTaskChannel:        make(chan *ScheduledRunnableTask),
@@ -53,7 +53,7 @@ func NewScheduledTaskExecutor(runner TaskRunner) *ScheduledTaskExecutor {
 	return executor
 }
 
-func (executor *ScheduledTaskExecutor) Schedule(task Task, delay time.Duration) (ScheduledTask, error) {
+func (executor *SimpleTaskExecutor) Schedule(task Task, delay time.Duration) (ScheduledTask, error) {
 	if task == nil {
 		return nil, errors.New("task cannot be nil")
 	}
@@ -74,7 +74,7 @@ func (executor *ScheduledTaskExecutor) Schedule(task Task, delay time.Duration) 
 	return scheduledTask, nil
 }
 
-func (executor *ScheduledTaskExecutor) ScheduleWithFixedDelay(task Task, initialDelay time.Duration, delay time.Duration) (ScheduledTask, error) {
+func (executor *SimpleTaskExecutor) ScheduleWithFixedDelay(task Task, initialDelay time.Duration, delay time.Duration) (ScheduledTask, error) {
 	if task == nil {
 		return nil, errors.New("task cannot be nil")
 	}
@@ -95,7 +95,7 @@ func (executor *ScheduledTaskExecutor) ScheduleWithFixedDelay(task Task, initial
 	return scheduledTask, nil
 }
 
-func (executor *ScheduledTaskExecutor) ScheduleAtFixedRate(task Task, initialDelay time.Duration, period time.Duration) (ScheduledTask, error) {
+func (executor *SimpleTaskExecutor) ScheduleAtFixedRate(task Task, initialDelay time.Duration, period time.Duration) (ScheduledTask, error) {
 	if task == nil {
 		return nil, errors.New("task cannot be nil")
 	}
@@ -116,13 +116,13 @@ func (executor *ScheduledTaskExecutor) ScheduleAtFixedRate(task Task, initialDel
 	return scheduledTask, nil
 }
 
-func (executor *ScheduledTaskExecutor) IsShutdown() bool {
+func (executor *SimpleTaskExecutor) IsShutdown() bool {
 	executor.executorMu.Lock()
 	defer executor.executorMu.Unlock()
 	return executor.isShutdown
 }
 
-func (executor *ScheduledTaskExecutor) Shutdown() chan bool {
+func (executor *SimpleTaskExecutor) Shutdown() chan bool {
 	executor.executorMu.Lock()
 	defer executor.executorMu.Unlock()
 
@@ -137,7 +137,7 @@ func (executor *ScheduledTaskExecutor) Shutdown() chan bool {
 	return stoppedChan
 }
 
-func (executor *ScheduledTaskExecutor) calculateTriggerTime(delay time.Duration) time.Time {
+func (executor *SimpleTaskExecutor) calculateTriggerTime(delay time.Duration) time.Time {
 	if delay < 0 {
 		delay = 0
 	}
@@ -145,11 +145,11 @@ func (executor *ScheduledTaskExecutor) calculateTriggerTime(delay time.Duration)
 	return time.Now().Add(delay)
 }
 
-func (executor *ScheduledTaskExecutor) addNewTask(task *ScheduledRunnableTask) {
+func (executor *SimpleTaskExecutor) addNewTask(task *ScheduledRunnableTask) {
 	executor.newTaskChannel <- task
 }
 
-func (executor *ScheduledTaskExecutor) run() {
+func (executor *SimpleTaskExecutor) run() {
 
 	for {
 		executor.taskQueue.SorByTriggerTime()
@@ -206,7 +206,7 @@ func (executor *ScheduledTaskExecutor) run() {
 
 }
 
-func (executor *ScheduledTaskExecutor) startTask(scheduledRunnableTask *ScheduledRunnableTask) {
+func (executor *SimpleTaskExecutor) startTask(scheduledRunnableTask *ScheduledRunnableTask) {
 	executor.taskWaitGroup.Add(1)
 
 	executor.taskRunner.Run(func(ctx context.Context) {

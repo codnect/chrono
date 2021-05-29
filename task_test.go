@@ -45,7 +45,7 @@ func TestNewScheduledRunnableTask(t *testing.T) {
 
 func TestNewTriggerTask(t *testing.T) {
 	assert.Panics(t, func() {
-		NewTriggerTask(nil, NewDefaultScheduledExecutor(), NewCronTrigger("* * * * * *", time.Local))
+		NewTriggerTask(nil, NewDefaultTaskExecutor(), NewCronTrigger("* * * * * *", time.Local))
 	})
 
 	assert.Panics(t, func() {
@@ -57,7 +57,7 @@ func TestNewTriggerTask(t *testing.T) {
 	assert.Panics(t, func() {
 		NewTriggerTask(func(ctx context.Context) {
 
-		}, NewDefaultScheduledExecutor(), nil)
+		}, NewDefaultTaskExecutor(), nil)
 	})
 }
 
@@ -69,7 +69,7 @@ func (trigger *zeroTrigger) NextExecutionTime(ctx TriggerContext) time.Time {
 }
 
 func TestTriggerTask_Schedule(t *testing.T) {
-	task := NewTriggerTask(func(ctx context.Context) {}, NewDefaultScheduledExecutor(), &zeroTrigger{})
+	task := NewTriggerTask(func(ctx context.Context) {}, NewDefaultTaskExecutor(), &zeroTrigger{})
 	_, err := task.Schedule()
 	assert.NotNil(t, err)
 }

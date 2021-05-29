@@ -8,15 +8,15 @@ import (
 	"time"
 )
 
-func TestDefaultScheduler(t *testing.T) {
-	scheduler := NewDefaultScheduler()
+func TestDefaultTaskScheduler(t *testing.T) {
+	scheduler := NewDefaultTaskScheduler()
 
 	var counter int32
 	now := time.Now()
 
 	task, err := scheduler.Schedule(func(ctx context.Context) {
 		atomic.AddInt32(&counter, 1)
-	}, WithStartTime(Time(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second()+1, now.Nanosecond())))
+	}, WithStartTime(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second()+1))
 
 	assert.Nil(t, err)
 
@@ -26,15 +26,15 @@ func TestDefaultScheduler(t *testing.T) {
 		"number of scheduled task execution must be 1, actual: %d", counter)
 }
 
-func TestSimpleScheduler_WithoutScheduledExecutor(t *testing.T) {
-	scheduler := NewSimpleScheduler(nil)
+func TestSimpleTaskScheduler_WithoutScheduledExecutor(t *testing.T) {
+	scheduler := NewSimpleTaskScheduler(nil)
 
 	var counter int32
 	now := time.Now()
 
 	task, err := scheduler.Schedule(func(ctx context.Context) {
 		atomic.AddInt32(&counter, 1)
-	}, WithStartTime(Time(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second()+1, now.Nanosecond())))
+	}, WithStartTime(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second()+1))
 
 	assert.Nil(t, err)
 
@@ -44,15 +44,15 @@ func TestSimpleScheduler_WithoutScheduledExecutor(t *testing.T) {
 		"number of scheduled task execution must be 1, actual: %d", counter)
 }
 
-func TestSimpleScheduler_Schedule_OneShotTask(t *testing.T) {
-	scheduler := NewSimpleScheduler(NewDefaultScheduledExecutor())
+func TestSimpleTaskScheduler_Schedule_OneShotTask(t *testing.T) {
+	scheduler := NewSimpleTaskScheduler(NewDefaultTaskExecutor())
 
 	var counter int32
 	now := time.Now()
 
 	task, err := scheduler.Schedule(func(ctx context.Context) {
 		atomic.AddInt32(&counter, 1)
-	}, WithStartTime(Time(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second()+1, now.Nanosecond())))
+	}, WithStartTime(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second()+1))
 
 	assert.Nil(t, err)
 
@@ -62,8 +62,8 @@ func TestSimpleScheduler_Schedule_OneShotTask(t *testing.T) {
 		"number of scheduled task execution must be 1, actual: %d", counter)
 }
 
-func TestSimpleScheduler_ScheduleWithFixedDelay(t *testing.T) {
-	scheduler := NewSimpleScheduler(NewDefaultScheduledExecutor())
+func TestSimpleTaskScheduler_ScheduleWithFixedDelay(t *testing.T) {
+	scheduler := NewSimpleTaskScheduler(NewDefaultTaskExecutor())
 
 	var counter int32
 
@@ -80,8 +80,8 @@ func TestSimpleScheduler_ScheduleWithFixedDelay(t *testing.T) {
 		"number of scheduled task execution must be between 1 and 3, actual: %d", counter)
 }
 
-func TestSimpleScheduler_ScheduleWithFixedDelayWithStartTimeOption(t *testing.T) {
-	scheduler := NewSimpleScheduler(NewDefaultScheduledExecutor())
+func TestSimpleTaskScheduler_ScheduleWithFixedDelayWithStartTimeOption(t *testing.T) {
+	scheduler := NewSimpleTaskScheduler(NewDefaultTaskExecutor())
 
 	var counter int32
 	now := time.Now()
@@ -89,8 +89,7 @@ func TestSimpleScheduler_ScheduleWithFixedDelayWithStartTimeOption(t *testing.T)
 	task, err := scheduler.ScheduleWithFixedDelay(func(ctx context.Context) {
 		atomic.AddInt32(&counter, 1)
 		<-time.After(500 * time.Millisecond)
-	}, 200*time.Millisecond, WithStartTime(
-		Time(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second()+1, now.Nanosecond())))
+	}, 200*time.Millisecond, WithStartTime(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second()+1))
 
 	assert.Nil(t, err)
 
@@ -100,8 +99,8 @@ func TestSimpleScheduler_ScheduleWithFixedDelayWithStartTimeOption(t *testing.T)
 		"number of scheduled task execution must be between 1 and 3, actual: %d", counter)
 }
 
-func TestSimpleScheduler_ScheduleAtFixedRate(t *testing.T) {
-	scheduler := NewSimpleScheduler(NewDefaultScheduledExecutor())
+func TestSimpleTaskScheduler_ScheduleAtFixedRate(t *testing.T) {
+	scheduler := NewSimpleTaskScheduler(NewDefaultTaskExecutor())
 
 	var counter int32
 
@@ -117,8 +116,8 @@ func TestSimpleScheduler_ScheduleAtFixedRate(t *testing.T) {
 		"number of scheduled task execution must be between 5 and 10, actual: %d", counter)
 }
 
-func TestSimpleScheduler_ScheduleAtFixedRateWithStartTimeOption(t *testing.T) {
-	scheduler := NewSimpleScheduler(NewDefaultScheduledExecutor())
+func TestSimpleTaskScheduler_ScheduleAtFixedRateWithStartTimeOption(t *testing.T) {
+	scheduler := NewSimpleTaskScheduler(NewDefaultTaskExecutor())
 
 	var counter int32
 	now := time.Now()
@@ -126,8 +125,7 @@ func TestSimpleScheduler_ScheduleAtFixedRateWithStartTimeOption(t *testing.T) {
 	task, err := scheduler.ScheduleAtFixedRate(func(ctx context.Context) {
 		atomic.AddInt32(&counter, 1)
 		<-time.After(500 * time.Millisecond)
-	}, 200*time.Millisecond, WithStartTime(
-		Time(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second()+1, now.Nanosecond())))
+	}, 200*time.Millisecond, WithStartTime(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second()+1))
 
 	assert.Nil(t, err)
 
@@ -137,8 +135,8 @@ func TestSimpleScheduler_ScheduleAtFixedRateWithStartTimeOption(t *testing.T) {
 		"number of scheduled task execution must be between 5 and 10, actual: %d", counter)
 }
 
-func TestSimpleScheduler_ScheduleWithCron(t *testing.T) {
-	scheduler := NewSimpleScheduler(NewDefaultScheduledExecutor())
+func TestSimpleTaskScheduler_ScheduleWithCron(t *testing.T) {
+	scheduler := NewSimpleTaskScheduler(NewDefaultTaskExecutor())
 
 	var counter int32
 
@@ -155,8 +153,8 @@ func TestSimpleScheduler_ScheduleWithCron(t *testing.T) {
 		"number of scheduled task execution must be at least 5, actual: %d", counter)
 }
 
-func TestSimpleScheduler_Shutdown(t *testing.T) {
-	scheduler := NewSimpleScheduler(NewDefaultScheduledExecutor())
+func TestSimpleTaskScheduler_Shutdown(t *testing.T) {
+	scheduler := NewSimpleTaskScheduler(NewDefaultTaskExecutor())
 
 	var counter int32
 

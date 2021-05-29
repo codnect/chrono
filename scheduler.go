@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-type Scheduler interface {
+type TaskScheduler interface {
 	Schedule(task Task, options ...Option) (ScheduledTask, error)
 	ScheduleWithCron(task Task, expression string, options ...Option) (ScheduledTask, error)
 	ScheduleWithFixedDelay(task Task, delay time.Duration, options ...Option) (ScheduledTask, error)
@@ -13,52 +13,52 @@ type Scheduler interface {
 	Shutdown() chan bool
 }
 
-type SimpleScheduler struct {
-	executor ScheduledExecutor
+type SimpleTaskScheduler struct {
+	taskExecutor TaskExecutor
 }
 
-func NewSimpleScheduler(executor ScheduledExecutor) *SimpleScheduler {
+func NewSimpleTaskScheduler(executor TaskExecutor) *SimpleTaskScheduler {
 
 	if executor == nil {
-		executor = NewDefaultScheduledExecutor()
+		executor = NewDefaultTaskExecutor()
 	}
 
-	scheduler := &SimpleScheduler{
-		executor: executor,
+	scheduler := &SimpleTaskScheduler{
+		taskExecutor: executor,
 	}
 
 	return scheduler
 }
 
-func NewDefaultScheduler() Scheduler {
-	return NewSimpleScheduler(NewDefaultScheduledExecutor())
+func NewDefaultTaskScheduler() TaskScheduler {
+	return NewSimpleTaskScheduler(NewDefaultTaskExecutor())
 }
 
-func (scheduler *SimpleScheduler) Schedule(task Task, options ...Option) (ScheduledTask, error) {
+func (scheduler *SimpleTaskScheduler) Schedule(task Task, options ...Option) (ScheduledTask, error) {
 	schedulerTask := NewSchedulerTask(task, options...)
-	return scheduler.executor.Schedule(task, schedulerTask.GetInitialDelay())
+	return scheduler.taskExecutor.Schedule(task, schedulerTask.GetInitialDelay())
 }
 
-func (scheduler *SimpleScheduler) ScheduleWithCron(task Task, expression string, options ...Option) (ScheduledTask, error) {
+func (scheduler *SimpleTaskScheduler) ScheduleWithCron(task Task, expression string, options ...Option) (ScheduledTask, error) {
 	schedulerTask := NewSchedulerTask(task, options...)
-	triggerTask := NewTriggerTask(schedulerTask.task, scheduler.executor, NewCronTrigger(expression, schedulerTask.location))
+	triggerTask := NewTriggerTask(schedulerTask.task, scheduler.taskExecutor, NewCronTrigger(expression, schedulerTask.location))
 	return triggerTask.Schedule()
 }
 
-func (scheduler *SimpleScheduler) ScheduleWithFixedDelay(task Task, delay time.Duration, options ...Option) (ScheduledTask, error) {
+func (scheduler *SimpleTaskScheduler) ScheduleWithFixedDelay(task Task, delay time.Duration, options ...Option) (ScheduledTask, error) {
 	schedulerTask := NewSchedulerTask(task, options...)
-	return scheduler.executor.ScheduleWithFixedDelay(schedulerTask.task, schedulerTask.GetInitialDelay(), delay)
+	return scheduler.taskExecutor.ScheduleWithFixedDelay(schedulerTask.task, schedulerTask.GetInitialDelay(), delay)
 }
 
-func (scheduler *SimpleScheduler) ScheduleAtFixedRate(task Task, period time.Duration, options ...Option) (ScheduledTask, error) {
+func (scheduler *SimpleTaskScheduler) ScheduleAtFixedRate(task Task, period time.Duration, options ...Option) (ScheduledTask, error) {
 	schedulerTask := NewSchedulerTask(task, options...)
-	return scheduler.executor.ScheduleAtFixedRate(schedulerTask.task, schedulerTask.GetInitialDelay(), period)
+	return scheduler.taskExecutor.ScheduleAtFixedRate(schedulerTask.task, schedulerTask.GetInitialDelay(), period)
 }
 
-func (scheduler *SimpleScheduler) IsShutdown() bool {
-	return scheduler.executor.IsShutdown()
+func (scheduler *SimpleTaskScheduler) IsShutdown() bool {
+	return scheduler.taskExecutor.IsShutdown()
 }
 
-func (scheduler *SimpleScheduler) Shutdown() chan bool {
-	return scheduler.executor.Shutdown()
+func (scheduler *SimpleTaskScheduler) Shutdown() chan bool {
+	return scheduler.taskExecutor.Shutdown()
 }

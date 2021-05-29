@@ -40,20 +40,21 @@ func (task *SchedulerTask) GetInitialDelay() time.Duration {
 	}
 
 	now := time.Now().In(task.location)
-	originalStartTime := task.startTime.In(task.location)
+	diff := time.Date(task.startTime.Year(), task.startTime.Month(), task.startTime.Day(), task.startTime.Hour(), task.startTime.Minute(), task.startTime.Second(), 0, time.Local).Sub(
+		time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second(), 0, time.Local))
 
-	if now.After(originalStartTime) {
+	if diff < 0 {
 		return 0
 	}
 
-	return originalStartTime.Sub(now)
+	return diff
 }
 
 type Option func(task *SchedulerTask)
 
-func WithStartTime(startTime TimeFunction) Option {
+func WithStartTime(year int, month time.Month, day, hour, min, sec int) Option {
 	return func(task *SchedulerTask) {
-		task.startTime = startTime()
+		task.startTime = time.Date(year, month, day, hour, min, sec, 0, time.Local)
 	}
 }
 
@@ -147,14 +148,14 @@ func (queue ScheduledTaskQueue) SorByTriggerTime() {
 type TriggerTask struct {
 	task                 Task
 	currentScheduledTask *ScheduledRunnableTask
-	executor             ScheduledExecutor
+	executor             TaskExecutor
 	triggerContext       *SimpleTriggerContext
 	triggerContextMu     sync.RWMutex
 	trigger              Trigger
 	nextTriggerTime      time.Time
 }
 
-func NewTriggerTask(task Task, executor ScheduledExecutor, trigger Trigger) *TriggerTask {
+func NewTriggerTask(task Task, executor TaskExecutor, trigger Trigger) *TriggerTask {
 	if task == nil {
 		panic("task cannot be nil")
 	}

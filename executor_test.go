@@ -8,8 +8,8 @@ import (
 	"time"
 )
 
-func TestNewDefaultScheduledExecutor(t *testing.T) {
-	executor := NewDefaultScheduledExecutor()
+func TestNewDefaultTaskExecutor(t *testing.T) {
+	executor := NewDefaultTaskExecutor()
 
 	var counter int32
 
@@ -25,8 +25,8 @@ func TestNewDefaultScheduledExecutor(t *testing.T) {
 		"number of scheduled task execution must be 1, actual: %d", counter)
 }
 
-func TestScheduledTaskExecutor_WithoutTaskRunner(t *testing.T) {
-	executor := NewScheduledTaskExecutor(nil)
+func TestSimpleTaskExecutor_WithoutTaskRunner(t *testing.T) {
+	executor := NewSimpleTaskExecutor(nil)
 
 	var counter int32
 
@@ -42,8 +42,8 @@ func TestScheduledTaskExecutor_WithoutTaskRunner(t *testing.T) {
 		"number of scheduled task execution must be 1, actual: %d", counter)
 }
 
-func TestScheduledTaskExecutor_Schedule_OneShotTask(t *testing.T) {
-	executor := NewScheduledTaskExecutor(NewDefaultTaskRunner())
+func TestSimpleTaskExecutor_Schedule_OneShotTask(t *testing.T) {
+	executor := NewSimpleTaskExecutor(NewDefaultTaskRunner())
 
 	var counter int32
 
@@ -59,8 +59,8 @@ func TestScheduledTaskExecutor_Schedule_OneShotTask(t *testing.T) {
 		"number of scheduled task execution must be 1, actual: %d", counter)
 }
 
-func TestScheduledTaskExecutor_ScheduleWithFixedDelay(t *testing.T) {
-	executor := NewScheduledTaskExecutor(NewDefaultTaskRunner())
+func TestSimpleTaskExecutor_ScheduleWithFixedDelay(t *testing.T) {
+	executor := NewSimpleTaskExecutor(NewDefaultTaskRunner())
 
 	var counter int32
 
@@ -77,8 +77,8 @@ func TestScheduledTaskExecutor_ScheduleWithFixedDelay(t *testing.T) {
 		"number of scheduled task execution must be between 1 and 3, actual: %d", counter)
 }
 
-func TestScheduledTaskExecutor_ScheduleWithFixedDelayWithInitialDelay(t *testing.T) {
-	executor := NewScheduledTaskExecutor(NewDefaultTaskRunner())
+func TestSimpleTaskExecutor_ScheduleWithFixedDelayWithInitialDelay(t *testing.T) {
+	executor := NewSimpleTaskExecutor(NewDefaultTaskRunner())
 
 	var counter int32
 
@@ -95,8 +95,8 @@ func TestScheduledTaskExecutor_ScheduleWithFixedDelayWithInitialDelay(t *testing
 		"number of scheduled task execution must be between 1 and 3, actual: %d", counter)
 }
 
-func TestScheduledTaskExecutor_ScheduleAtFixedRate(t *testing.T) {
-	executor := NewScheduledTaskExecutor(NewDefaultTaskRunner())
+func TestSimpleTaskExecutor_ScheduleAtFixedRate(t *testing.T) {
+	executor := NewSimpleTaskExecutor(NewDefaultTaskRunner())
 
 	var counter int32
 
@@ -112,8 +112,8 @@ func TestScheduledTaskExecutor_ScheduleAtFixedRate(t *testing.T) {
 		"number of scheduled task execution must be between 5 and 10, actual: %d", counter)
 }
 
-func TestScheduledTaskExecutor_ScheduleAtFixedRateWithInitialDelay(t *testing.T) {
-	executor := NewScheduledTaskExecutor(NewDefaultTaskRunner())
+func TestSimpleTaskExecutor_ScheduleAtFixedRateWithInitialDelay(t *testing.T) {
+	executor := NewSimpleTaskExecutor(NewDefaultTaskRunner())
 
 	var counter int32
 
@@ -130,8 +130,8 @@ func TestScheduledTaskExecutor_ScheduleAtFixedRateWithInitialDelay(t *testing.T)
 		"number of scheduled task execution must be between 5 and 10, actual: %d", counter)
 }
 
-func TestScheduledTaskExecutor_Shutdown(t *testing.T) {
-	executor := NewScheduledTaskExecutor(NewDefaultTaskRunner())
+func TestSimpleTaskExecutor_Shutdown(t *testing.T) {
+	executor := NewSimpleTaskExecutor(NewDefaultTaskRunner())
 
 	var counter int32
 
@@ -151,8 +151,8 @@ func TestScheduledTaskExecutor_Shutdown(t *testing.T) {
 		"after shutdown, previously scheduled tasks should not be rescheduled", counter)
 }
 
-func TestScheduledTaskExecutor_NoNewTaskShouldBeAccepted_AfterShutdown(t *testing.T) {
-	executor := NewScheduledTaskExecutor(NewDefaultTaskRunner())
+func TestSimpleTaskExecutor_NoNewTaskShouldBeAccepted_AfterShutdown(t *testing.T) {
+	executor := NewSimpleTaskExecutor(NewDefaultTaskRunner())
 	executor.Shutdown()
 
 	var err error
@@ -171,8 +171,8 @@ func TestScheduledTaskExecutor_NoNewTaskShouldBeAccepted_AfterShutdown(t *testin
 	assert.NotNil(t, err)
 }
 
-func TestScheduledTaskExecutor_Schedule_MultiTasks(t *testing.T) {
-	executor := NewScheduledTaskExecutor(NewDefaultTaskRunner())
+func TestSimpleTaskExecutor_Schedule_MultiTasks(t *testing.T) {
+	executor := NewSimpleTaskExecutor(NewDefaultTaskRunner())
 
 	var task1Counter int32
 	var task2Counter int32
@@ -214,8 +214,8 @@ func TestScheduledTaskExecutor_Schedule_MultiTasks(t *testing.T) {
 		"number of scheduled task execution must be between 5 and 10, actual: %d", task3Counter)
 }
 
-func TestScheduledTaskExecutor_ScheduleWithNilTask(t *testing.T) {
-	executor := NewScheduledTaskExecutor(NewDefaultTaskRunner())
+func TestSimpleTaskExecutor_ScheduleWithNilTask(t *testing.T) {
+	executor := NewSimpleTaskExecutor(NewDefaultTaskRunner())
 
 	var task ScheduledTask
 	var err error
@@ -233,8 +233,8 @@ func TestScheduledTaskExecutor_ScheduleWithNilTask(t *testing.T) {
 	assert.NotNil(t, err)
 }
 
-func TestScheduledTaskExecutor_Shutdown_TerminatedExecutor(t *testing.T) {
-	executor := NewScheduledTaskExecutor(NewDefaultTaskRunner())
+func TestSimpleTaskExecutor_Shutdown_TerminatedExecutor(t *testing.T) {
+	executor := NewSimpleTaskExecutor(NewDefaultTaskRunner())
 	executor.Shutdown()
 
 	assert.Panics(t, func() {
