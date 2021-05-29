@@ -66,8 +66,12 @@ func (executor *SimpleTaskExecutor) Schedule(task Task, delay time.Duration) (Sc
 	}
 
 	executor.nextSequence++
-	scheduledTask := NewScheduledRunnableTask(executor.nextSequence, task, executor.calculateTriggerTime(delay), 0, false)
+	scheduledTask, err := CreateScheduledRunnableTask(executor.nextSequence, task, executor.calculateTriggerTime(delay), 0, false)
 	executor.executorMu.Unlock()
+
+	if err != nil {
+		return nil, err
+	}
 
 	executor.addNewTask(scheduledTask)
 
@@ -87,8 +91,12 @@ func (executor *SimpleTaskExecutor) ScheduleWithFixedDelay(task Task, initialDel
 	}
 
 	executor.nextSequence++
-	scheduledTask := NewScheduledRunnableTask(executor.nextSequence, task, executor.calculateTriggerTime(initialDelay), delay, false)
+	scheduledTask, err := CreateScheduledRunnableTask(executor.nextSequence, task, executor.calculateTriggerTime(initialDelay), delay, false)
 	executor.executorMu.Unlock()
+
+	if err != nil {
+		return nil, err
+	}
 
 	executor.addNewTask(scheduledTask)
 
@@ -108,8 +116,12 @@ func (executor *SimpleTaskExecutor) ScheduleAtFixedRate(task Task, initialDelay 
 	}
 
 	executor.nextSequence++
-	scheduledTask := NewScheduledRunnableTask(executor.nextSequence, task, executor.calculateTriggerTime(initialDelay), period, true)
+	scheduledTask, err := CreateScheduledRunnableTask(executor.nextSequence, task, executor.calculateTriggerTime(initialDelay), period, true)
 	executor.executorMu.Unlock()
+
+	if err != nil {
+		return nil, err
+	}
 
 	executor.addNewTask(scheduledTask)
 

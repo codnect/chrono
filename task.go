@@ -3,6 +3,7 @@ package chrono
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sort"
 	"sync"
 	"time"
@@ -16,9 +17,9 @@ type SchedulerTask struct {
 	location  *time.Location
 }
 
-func NewSchedulerTask(task Task, options ...Option) *SchedulerTask {
+func CreateSchedulerTask(task Task, options ...Option) (*SchedulerTask, error) {
 	if task == nil {
-		panic("task cannot be nil")
+		return nil, errors.New("task cannot be nil")
 	}
 
 	runnableTask := &SchedulerTask{
@@ -28,10 +29,14 @@ func NewSchedulerTask(task Task, options ...Option) *SchedulerTask {
 	}
 
 	for _, option := range options {
-		option(runnableTask)
+		err := option(runnableTask)
+
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return runnableTask
+	return runnableTask, nil
 }
 
 func (task *SchedulerTask) GetInitialDelay() time.Duration {
@@ -50,23 +55,25 @@ func (task *SchedulerTask) GetInitialDelay() time.Duration {
 	return diff
 }
 
-type Option func(task *SchedulerTask)
+type Option func(task *SchedulerTask) error
 
 func WithStartTime(year int, month time.Month, day, hour, min, sec int) Option {
-	return func(task *SchedulerTask) {
+	return func(task *SchedulerTask) error {
 		task.startTime = time.Date(year, month, day, hour, min, sec, 0, time.Local)
+		return nil
 	}
 }
 
 func WithLocation(location string) Option {
-	return func(task *SchedulerTask) {
+	return func(task *SchedulerTask) error {
 		loadedLocation, err := time.LoadLocation(location)
 
 		if err != nil {
-			panic(err)
+			return fmt.Errorf("location not loaded : %s", location)
 		}
 
 		task.location = loadedLocation
+		return nil
 	}
 }
 
@@ -85,9 +92,9 @@ type ScheduledRunnableTask struct {
 	cancelled   bool
 }
 
-func NewScheduledRunnableTask(id int, task Task, triggerTime time.Time, period time.Duration, fixedRate bool) *ScheduledRunnableTask {
+func CreateScheduledRunnableTask(id int, task Task, triggerTime time.Time, period time.Duration, fixedRate bool) (*ScheduledRunnableTask, error) {
 	if task == nil {
-		panic("task cannot be nil")
+		return nil, errors.New("task cannot be nil")
 	}
 
 	if period < 0 {
@@ -100,7 +107,7 @@ func NewScheduledRunnableTask(id int, task Task, triggerTime time.Time, period t
 		triggerTime: triggerTime,
 		period:      period,
 		fixedRate:   fixedRate,
-	}
+	}, nil
 }
 
 func (scheduledRunnableTask *ScheduledRunnableTask) Cancel() {
@@ -155,17 +162,17 @@ type TriggerTask struct {
 	nextTriggerTime      time.Time
 }
 
-func NewTriggerTask(task Task, executor TaskExecutor, trigger Trigger) *TriggerTask {
+func CreateTriggerTask(task Task, executor TaskExecutor, trigger Trigger) (*TriggerTask, error) {
 	if task == nil {
-		panic("task cannot be nil")
+		return nil, errors.New("task cannot be nil")
 	}
 
 	if executor == nil {
-		panic("executor cannot be nil")
+		return nil, errors.New("executor cannot be nil")
 	}
 
 	if trigger == nil {
-		panic("trigger cannot be nil")
+		return nil, errors.New("trigger cannot be nil")
 	}
 
 	return &TriggerTask{
@@ -173,7 +180,7 @@ func NewTriggerTask(task Task, executor TaskExecutor, trigger Trigger) *TriggerT
 		executor:       executor,
 		triggerContext: NewSimpleTriggerContext(),
 		trigger:        trigger,
-	}
+	}, nil
 }
 
 func (task *TriggerTask) Cancel() {

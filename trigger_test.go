@@ -19,7 +19,7 @@ func TestSimpleTriggerContext(t *testing.T) {
 }
 
 func TestNewCronTrigger(t *testing.T) {
-	assert.Panics(t, func() {
-		NewCronTrigger("", time.Local)
-	})
+	trigger, err := CreateCronTrigger("", time.Local)
+	assert.Error(t, err)
+	assert.Nil(t, trigger)
 }

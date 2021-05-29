@@ -45,11 +45,11 @@ type CronTrigger struct {
 	location       *time.Location
 }
 
-func NewCronTrigger(expression string, location *time.Location) *CronTrigger {
+func CreateCronTrigger(expression string, location *time.Location) (*CronTrigger, error) {
 	cron, err := ParseCronExpression(expression)
 
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	trigger := &CronTrigger{
@@ -61,7 +61,7 @@ func NewCronTrigger(expression string, location *time.Location) *CronTrigger {
 		trigger.location = location
 	}
 
-	return trigger
+	return trigger, nil
 }
 
 func (trigger *CronTrigger) NextExecutionTime(ctx TriggerContext) time.Time {
