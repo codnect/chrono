@@ -26,6 +26,43 @@ func TestDefaultTaskScheduler(t *testing.T) {
 		"number of scheduled task execution must be 1, actual: %d", counter)
 }
 
+func TestSimpleTaskScheduler_ScheduleWithoutTask(t *testing.T) {
+	scheduler := NewDefaultTaskScheduler()
+	task, err := scheduler.Schedule(nil)
+	assert.Error(t, err)
+	assert.Nil(t, task)
+}
+
+func TestSimpleTaskScheduler_ScheduleWithFixedDelayWithoutTask(t *testing.T) {
+	scheduler := NewDefaultTaskScheduler()
+	task, err := scheduler.ScheduleWithFixedDelay(nil, 2*time.Second)
+	assert.Error(t, err)
+	assert.Nil(t, task)
+}
+
+func TestSimpleTaskScheduler_ScheduleAtFixedRateWithoutTask(t *testing.T) {
+	scheduler := NewDefaultTaskScheduler()
+	task, err := scheduler.ScheduleAtFixedRate(nil, 2*time.Second)
+	assert.Error(t, err)
+	assert.Nil(t, task)
+}
+
+func TestSimpleTaskScheduler_ScheduleWithCronWithoutTask(t *testing.T) {
+	scheduler := NewDefaultTaskScheduler()
+	task, err := scheduler.ScheduleWithCron(nil, "* * * * * *")
+	assert.Error(t, err)
+	assert.Nil(t, task)
+}
+
+func TestSimpleTaskScheduler_ScheduleWithCronUsingInvalidCronExpresion(t *testing.T) {
+	scheduler := NewDefaultTaskScheduler()
+	task, err := scheduler.ScheduleWithCron(func(ctx context.Context) {
+
+	}, "test * * * * *")
+	assert.Error(t, err)
+	assert.Nil(t, task)
+}
+
 func TestSimpleTaskScheduler_WithoutScheduledExecutor(t *testing.T) {
 	scheduler := NewSimpleTaskScheduler(nil)
 
