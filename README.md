@@ -13,7 +13,7 @@ The Schedule method helps us schedule the task to run once at the specified time
 ```go
 taskScheduler := chrono.NewDefaultTaskScheduler()
 
-task, err := scheduler.Schedule(func(ctx context.Context) {
+task, err := taskScheduler.Schedule(func(ctx context.Context) {
 	log.Print("One-Shot Task")
 }, WithStartTime(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second()+1))
 
@@ -29,7 +29,7 @@ The fixed delay counts the delay after the completion of the last execution.
 ```go
 taskScheduler := chrono.NewDefaultTaskScheduler()
 
-task, err := scheduler.ScheduleWithFixedDelay(func(ctx context.Context) {
+task, err := taskScheduler.ScheduleWithFixedDelay(func(ctx context.Context) {
 	log.Print("Fixed Delay Task")
 	time.Sleep(3 * time.Second)
 }, 5 * time.Second)
