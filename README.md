@@ -7,8 +7,24 @@
 Chrono is a scheduler library that lets you run your tasks and code periodically. It provides different scheduling functionalities to make it easier to create a scheduling task.
 
 ## Scheduling a One-Shot Task
-The Schedule method helps us schedule the task to run once at the specified time. In the following example, the task will first be executed 1 second after the current time. 
-**WithStartTime** option is used to specify the execution time.
+The Schedule method helps us schedule the task to run once at the specified time. In the following example, the task will first be executed 1 second after the current time.
+**WithTime** option is used to specify the execution time.
+
+```go
+taskScheduler := chrono.NewDefaultTaskScheduler()
+now := time.Now()
+startTime := now.Add(time.Second * 1)
+
+task, err := taskScheduler.Schedule(func(ctx context.Context) {
+	log.Print("One-Shot Task")
+}, WithTime(startTime))
+
+if err == nil {
+	log.Print("Task has been scheduled successfully.")
+}
+```
+
+Also, **WithStartTime** option can be used to specify the execution time. **But It's deprecated.**
 
 ```go
 taskScheduler := chrono.NewDefaultTaskScheduler()

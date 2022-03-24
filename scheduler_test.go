@@ -26,6 +26,25 @@ func TestDefaultTaskScheduler(t *testing.T) {
 		"number of scheduled task execution must be 1, actual: %d", counter)
 }
 
+func TestDefaultTaskSchedulerWithTimeOption(t *testing.T) {
+	scheduler := NewDefaultTaskScheduler()
+
+	var counter int32
+	now := time.Now()
+	starTime := now.Add(time.Second * 1)
+
+	task, err := scheduler.Schedule(func(ctx context.Context) {
+		atomic.AddInt32(&counter, 1)
+	}, WithTime(starTime))
+
+	assert.Nil(t, err)
+
+	<-time.After(2 * time.Second)
+	assert.True(t, task.IsCancelled(), "scheduled task must have been cancelled")
+	assert.True(t, counter == 1,
+		"number of scheduled task execution must be 1, actual: %d", counter)
+}
+
 func TestSimpleTaskScheduler_ScheduleWithoutTask(t *testing.T) {
 	scheduler := NewDefaultTaskScheduler()
 	task, err := scheduler.Schedule(nil)
@@ -81,7 +100,26 @@ func TestSimpleTaskScheduler_WithoutScheduledExecutor(t *testing.T) {
 		"number of scheduled task execution must be 1, actual: %d", counter)
 }
 
-func TestSimpleTaskScheduler_Schedule_OneShotTask(t *testing.T) {
+func TestSimpleTaskScheduler_WithoutScheduledExecutorWithTimeOption(t *testing.T) {
+	scheduler := NewSimpleTaskScheduler(nil)
+
+	var counter int32
+	now := time.Now()
+	startTime := now.Add(time.Second * 1)
+
+	task, err := scheduler.Schedule(func(ctx context.Context) {
+		atomic.AddInt32(&counter, 1)
+	}, WithTime(startTime))
+
+	assert.Nil(t, err)
+
+	<-time.After(2 * time.Second)
+	assert.True(t, task.IsCancelled(), "scheduled task must have been cancelled")
+	assert.True(t, counter == 1,
+		"number of scheduled task execution must be 1, actual: %d", counter)
+}
+
+func TestSimpleTaskScheduler_ScheduleOneShotTaskWithStartTimeOption(t *testing.T) {
 	scheduler := NewSimpleTaskScheduler(NewDefaultTaskExecutor())
 
 	var counter int32
@@ -90,6 +128,25 @@ func TestSimpleTaskScheduler_Schedule_OneShotTask(t *testing.T) {
 	task, err := scheduler.Schedule(func(ctx context.Context) {
 		atomic.AddInt32(&counter, 1)
 	}, WithStartTime(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second()+1))
+
+	assert.Nil(t, err)
+
+	<-time.After(2 * time.Second)
+	assert.True(t, task.IsCancelled(), "scheduled task must have been cancelled")
+	assert.True(t, counter == 1,
+		"number of scheduled task execution must be 1, actual: %d", counter)
+}
+
+func TestSimpleTaskScheduler_ScheduleOneShotTaskWithTimeOption(t *testing.T) {
+	scheduler := NewSimpleTaskScheduler(NewDefaultTaskExecutor())
+
+	var counter int32
+	now := time.Now()
+	startTime := now.Add(time.Second * 1)
+
+	task, err := scheduler.Schedule(func(ctx context.Context) {
+		atomic.AddInt32(&counter, 1)
+	}, WithTime(startTime))
 
 	assert.Nil(t, err)
 
@@ -136,6 +193,26 @@ func TestSimpleTaskScheduler_ScheduleWithFixedDelayWithStartTimeOption(t *testin
 		"number of scheduled task execution must be between 1 and 3, actual: %d", counter)
 }
 
+func TestSimpleTaskScheduler_ScheduleWithFixedDelayWithTimeOption(t *testing.T) {
+	scheduler := NewSimpleTaskScheduler(NewDefaultTaskExecutor())
+
+	var counter int32
+	now := time.Now()
+	startTime := now.Add(time.Second * 1)
+
+	task, err := scheduler.ScheduleWithFixedDelay(func(ctx context.Context) {
+		atomic.AddInt32(&counter, 1)
+		<-time.After(500 * time.Millisecond)
+	}, 200*time.Millisecond, WithTime(startTime))
+
+	assert.Nil(t, err)
+
+	<-time.After(2*time.Second + 500*time.Millisecond)
+	task.Cancel()
+	assert.True(t, counter >= 1 && counter <= 3,
+		"number of scheduled task execution must be between 1 and 3, actual: %d", counter)
+}
+
 func TestSimpleTaskScheduler_ScheduleAtFixedRate(t *testing.T) {
 	scheduler := NewSimpleTaskScheduler(NewDefaultTaskExecutor())
 
@@ -163,6 +240,26 @@ func TestSimpleTaskScheduler_ScheduleAtFixedRateWithStartTimeOption(t *testing.T
 		atomic.AddInt32(&counter, 1)
 		<-time.After(500 * time.Millisecond)
 	}, 200*time.Millisecond, WithStartTime(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second()+1))
+
+	assert.Nil(t, err)
+
+	<-time.After(3*time.Second - 50*time.Millisecond)
+	task.Cancel()
+	assert.True(t, counter >= 5 && counter <= 10,
+		"number of scheduled task execution must be between 5 and 10, actual: %d", counter)
+}
+
+func TestSimpleTaskScheduler_ScheduleAtFixedRateWithTimeOption(t *testing.T) {
+	scheduler := NewSimpleTaskScheduler(NewDefaultTaskExecutor())
+
+	var counter int32
+	now := time.Now()
+	startTime := now.Add(time.Second * 1)
+
+	task, err := scheduler.ScheduleAtFixedRate(func(ctx context.Context) {
+		atomic.AddInt32(&counter, 1)
+		<-time.After(500 * time.Millisecond)
+	}, 200*time.Millisecond, WithTime(startTime))
 
 	assert.Nil(t, err)
 
