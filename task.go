@@ -57,6 +57,19 @@ func (task *SchedulerTask) GetInitialDelay() time.Duration {
 
 type Option func(task *SchedulerTask) error
 
+func WithTime(t time.Time) Option {
+	return func(task *SchedulerTask) error {
+		task.startTime = time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), 0, time.Local)
+
+		if t.Location() != nil && t.Location() != time.Local {
+			task.location = t.Location()
+		}
+
+		return nil
+	}
+}
+
+// Deprecated: Use WithTime instead.
 func WithStartTime(year int, month time.Month, day, hour, min, sec int) Option {
 	return func(task *SchedulerTask) error {
 		task.startTime = time.Date(year, month, day, hour, min, sec, 0, time.Local)
