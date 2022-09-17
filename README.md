@@ -17,7 +17,7 @@ startTime := now.Add(time.Second * 1)
 
 task, err := taskScheduler.Schedule(func(ctx context.Context) {
 	log.Print("One-Shot Task")
-}, WithTime(startTime))
+}, chrono.WithTime(startTime))
 
 if err == nil {
 	log.Print("Task has been scheduled successfully.")
@@ -31,7 +31,7 @@ taskScheduler := chrono.NewDefaultTaskScheduler()
 
 task, err := taskScheduler.Schedule(func(ctx context.Context) {
 	log.Print("One-Shot Task")
-}, WithStartTime(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second()+1))
+}, chrono.WithStartTime(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second()+1))
 
 if err == nil {
 	log.Print("Task has been scheduled successfully.")
@@ -82,7 +82,7 @@ now := time.Now()
 
 task, err := taskScheduler.ScheduleAtFixedRate(func(ctx context.Context) {
 	log.Print("Fixed Rate of 5 seconds")
-}, 5 * time.Second, WithStartTime(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second() + 2))
+}, 5 * time.Second, chrono.WithStartTime(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second() + 2))
 ```
 
 When we use this option, the task will run at the specified execution time and subsequently with the given period. In the above example, the task will first be executed 2 seconds after the current time.
@@ -94,8 +94,8 @@ now := time.Now()
 
 task, err := taskScheduler.ScheduleAtFixedRate(func(ctx context.Context) {
 	log.Print("Fixed Rate of 5 seconds")
-}, 5 * time.Second, WithStartTime(now.Year(), now.Month(), now.Day(), 18, 45, 0),
-WithLocation("America/New_York"))
+}, 5 * time.Second, chrono.WithStartTime(now.Year(), now.Month(), now.Day(), 18, 45, 0),
+chrono.WithLocation("America/New_York"))
 ```
 
 In the above example, the task will first be executed at 18:45 of the current date in America/New York time.
@@ -123,7 +123,7 @@ By default, the local time is used for the cron expression. However, we can use 
 ```go
 task, err := taskScheduler.ScheduleWithCron(func(ctx context.Context) {
 	log.Print("Scheduled Task With Cron")
-}, "0 45 18 10 * *", WithLocation("America/New_York"))
+}, "0 45 18 10 * *", chrono.WithLocation("America/New_York"))
 ```
 
 In the above example, Task will be scheduled to be executed at 18:45 on the 10th day of every month in America/New York time.
