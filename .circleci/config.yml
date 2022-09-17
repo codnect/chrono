@@ -14,7 +14,7 @@ jobs:
             - go-mod-v4-{{ checksum "go.sum" }}
       - run:
           name: Install Dependencies
-          command: go get ./...
+          command: go get -t -v ./...
       - save_cache:
           key: go-mod-v4-{{ checksum "go.sum" }}
           paths:
@@ -33,7 +33,7 @@ jobs:
             - go-mod-v4-{{ checksum "go.sum" }}
       - run:
           name: Install Dependencies
-          command: go get ./...
+          command: go get -t -v ./...
       - save_cache:
           key: go-mod-v4-{{ checksum "go.sum" }}
           paths:
@@ -51,7 +51,7 @@ jobs:
             - go-mod-v4-{{ checksum "go.sum" }}
       - run:
           name: Install Dependencies
-          command: go get ./...
+          command: go get -t -v ./...
       - save_cache:
           key: go-mod-v4-{{ checksum "go.sum" }}
           paths:
@@ -69,7 +69,7 @@ jobs:
             - go-mod-v4-{{ checksum "go.sum" }}
       - run:
           name: Install Dependencies
-          command: go get ./...
+          command: go get -t -v ./...
       - save_cache:
           key: go-mod-v4-{{ checksum "go.sum" }}
           paths:
@@ -87,7 +87,7 @@ jobs:
             - go-mod-v4-{{ checksum "go.sum" }}
       - run:
           name: Install Dependencies
-          command: go get ./...
+          command: go get -t -v ./...
       - save_cache:
           key: go-mod-v4-{{ checksum "go.sum" }}
           paths:
@@ -105,7 +105,7 @@ jobs:
             - go-mod-v4-{{ checksum "go.sum" }}
       - run:
           name: Install Dependencies
-          command: go get ./...
+          command: go get -t -v ./...
       - save_cache:
           key: go-mod-v4-{{ checksum "go.sum" }}
           paths:
