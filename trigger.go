@@ -81,15 +81,27 @@ func (trigger *CronTrigger) NextExecutionTime(ctx TriggerContext) time.Time {
 	originalLocation := now.Location()
 
 	convertedTime := now.In(trigger.location)
-	newTime := time.Date(convertedTime.Year(),
+	convertedTime = time.Date(convertedTime.Year(),
 		convertedTime.Month(),
 		convertedTime.Day(),
 		convertedTime.Hour(),
 		convertedTime.Minute(),
 		convertedTime.Second(),
-		0,
+		convertedTime.Nanosecond(),
 		trigger.location)
 
-	next := trigger.cronExpression.NextTime(newTime)
+	next := trigger.cronExpression.NextTime(convertedTime)
+
+	// there is a bug causes timezone changing when an operation is performed on time value like add, subtraction
+	// to resolve this issue, we use a workaround solution
+	next = time.Date(next.Year(),
+		next.Month(),
+		next.Day(),
+		next.Hour(),
+		next.Minute(),
+		next.Second(),
+		next.Nanosecond(),
+		trigger.location)
+
 	return next.In(originalLocation)
 }
