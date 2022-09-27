@@ -79,6 +79,17 @@ func (trigger *CronTrigger) NextExecutionTime(ctx TriggerContext) time.Time {
 	}
 
 	originalLocation := now.Location()
-	next := trigger.cronExpression.NextTime(now.In(trigger.location))
+
+	convertedTime := now.In(trigger.location)
+	newTime := time.Date(convertedTime.Year(),
+		convertedTime.Month(),
+		convertedTime.Day(),
+		convertedTime.Hour(),
+		convertedTime.Minute(),
+		convertedTime.Second(),
+		0,
+		trigger.location)
+
+	next := trigger.cronExpression.NextTime(newTime)
 	return next.In(originalLocation)
 }
