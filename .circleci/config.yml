@@ -4,7 +4,7 @@ orbs:
   codecov: codecov/codecov@3.1.1
 
 jobs:
-  build118:
+  build:
     docker:
       - image: cimg/go:1.18
     steps:
@@ -23,102 +23,7 @@ jobs:
           name: Run tests
           command: go test -coverprofile=coverage.txt -covermode=atomic
       - codecov/upload
-  build117:
-    docker:
-      - image: cimg/go:1.17
-    steps:
-      - checkout
-      - restore_cache:
-          keys:
-            - go-mod-v4-{{ checksum "go.sum" }}
-      - run:
-          name: Install Dependencies
-          command: go get -t -v ./...
-      - save_cache:
-          key: go-mod-v4-{{ checksum "go.sum" }}
-          paths:
-            - "/go/pkg/mod"
-      - run:
-          name: Run tests
-          command: go test -coverprofile=coverage.txt -covermode=atomic
-  build116:
-    docker:
-      - image: cimg/go:1.16
-    steps:
-      - checkout
-      - restore_cache:
-          keys:
-            - go-mod-v4-{{ checksum "go.sum" }}
-      - run:
-          name: Install Dependencies
-          command: go get -t -v ./...
-      - save_cache:
-          key: go-mod-v4-{{ checksum "go.sum" }}
-          paths:
-            - "/go/pkg/mod"
-      - run:
-          name: Run tests
-          command: go test -coverprofile=coverage.txt -covermode=atomic
-  build115:
-    docker:
-      - image: cimg/go:1.15
-    steps:
-      - checkout
-      - restore_cache:
-          keys:
-            - go-mod-v4-{{ checksum "go.sum" }}
-      - run:
-          name: Install Dependencies
-          command: go get -t -v ./...
-      - save_cache:
-          key: go-mod-v4-{{ checksum "go.sum" }}
-          paths:
-            - "/go/pkg/mod"
-      - run:
-          name: Run tests
-          command: go test -coverprofile=coverage.txt -covermode=atomic
-  build114:
-    docker:
-      - image: cimg/go:1.14
-    steps:
-      - checkout
-      - restore_cache:
-          keys:
-            - go-mod-v4-{{ checksum "go.sum" }}
-      - run:
-          name: Install Dependencies
-          command: go get -t -v ./...
-      - save_cache:
-          key: go-mod-v4-{{ checksum "go.sum" }}
-          paths:
-            - "/go/pkg/mod"
-      - run:
-          name: Run tests
-          command: go test -coverprofile=coverage.txt -covermode=atomic
-  build113:
-    docker:
-      - image: cimg/go:1.13
-    steps:
-      - checkout
-      - restore_cache:
-          keys:
-            - go-mod-v4-{{ checksum "go.sum" }}
-      - run:
-          name: Install Dependencies
-          command: go get -t -v ./...
-      - save_cache:
-          key: go-mod-v4-{{ checksum "go.sum" }}
-          paths:
-            - "/go/pkg/mod"
-      - run:
-          name: Run tests
-          command: go test -coverprofile=coverage.txt -covermode=atomic
 workflows:
   build-workflow:
     jobs:
-      - build118
-      - build117
-      - build116
-      - build115
-      - build114
-      - build113
+      - build
