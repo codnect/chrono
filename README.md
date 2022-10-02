@@ -161,5 +161,13 @@ shutdownChannel := taskScheduler.Shutdown()
 /* after all running task finished their works */
 ```
 
+Stargazers
+-----------
+[![Stargazers repo roster for @procyon-projects/chrono](https://reporoster.com/stars/procyon-projects/chrono)](https://github.com/procyon-projects/chrono/stargazers)
+
+Forkers
+-----------
+[![Forkers repo roster for @procyon-projects/chrono](https://reporoster.com/forks/procyon-projects/chrono)](https://github.com/procyon-projects/chrono/network/members)
+
 # License
 Chrono is released under MIT License.
