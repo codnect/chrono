@@ -1,5 +1,5 @@
-![chrono](https://user-images.githubusercontent.com/5354910/118358070-739adb00-b57d-11eb-989b-68baf83f9584.png)
-
+![Chrono Logo](https://user-images.githubusercontent.com/5354910/196008920-1ca88967-3d7d-449c-b165-fe38c5e1fb57.png)
+# Chrono
 [![Go Report Card](https://goreportcard.com/badge/github.com/procyon-projects/chrono)](https://goreportcard.com/report/github.com/procyon-projects/chrono)
 [![CircleCI](https://dl.circleci.com/status-badge/img/gh/procyon-projects/chrono/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/procyon-projects/chrono/tree/main)
 [![codecov](https://codecov.io/gh/procyon-projects/chrono/branch/main/graph/badge.svg?token=OREV0YI8VU)](https://codecov.io/gh/procyon-projects/chrono)
