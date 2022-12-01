@@ -162,15 +162,12 @@ func (expression *CronExpression) nextField(field *cronFieldBits, t time.Time) t
 }
 
 func ParseCronExpression(expression string) (*CronExpression, error) {
-	if len(expression) == 0 {
-		return nil, errors.New("cron expression must not be empty")
+	err := IsValid(expression)
+	if err != nil {
+		return nil, err
 	}
 
 	fields := strings.Fields(expression)
-
-	if len(fields) != 6 {
-		return nil, fmt.Errorf("cron expression must consist of 6 fields : found %d in \"%s\"", len(fields), expression)
-	}
 
 	cronExpression := newCronExpression()
 
@@ -194,10 +191,6 @@ func ParseCronExpression(expression string) (*CronExpression, error) {
 }
 
 func parseField(value string, fieldType fieldType) (*cronFieldBits, error) {
-	if len(value) == 0 {
-		return nil, fmt.Errorf("value must not be empty")
-	}
-
 	if fieldType.Field == cronFieldMonth {
 		value = replaceOrdinals(value, months)
 	} else if fieldType.Field == cronFieldDayOfWeek {
@@ -231,14 +224,6 @@ func parseField(value string, fieldType fieldType) (*cronFieldBits, error) {
 			stepStr := field[slashPos+1:]
 
 			step, err = strconv.Atoi(stepStr)
-
-			if err != nil {
-				return nil, fmt.Errorf("step must be number : \"%s\"", stepStr)
-			}
-
-			if step <= 0 {
-				return nil, fmt.Errorf("step must be 1 or higher in \"%s\"", value)
-			}
 		} else {
 			var err error
 			valueRange, err = parseRange(field, fieldType)
@@ -272,8 +257,7 @@ func parseRange(value string, fieldType fieldType) (valueRange, error) {
 		hyphenPos := strings.Index(value, "-")
 
 		if hyphenPos == -1 {
-			result, err := checkValidValue(value, fieldType)
-
+			result, err := strconv.Atoi(value)
 			if err != nil {
 				return valueRange{}, err
 			}
@@ -283,14 +267,12 @@ func parseRange(value string, fieldType fieldType) (valueRange, error) {
 			maxStr := value[hyphenPos+1:]
 			minStr := value[0:hyphenPos]
 
-			min, err := checkValidValue(minStr, fieldType)
-
+			min, err := strconv.Atoi(minStr)
 			if err != nil {
 				return valueRange{}, err
 			}
-			var max int
-			max, err = checkValidValue(maxStr, fieldType)
 
+			max, err := strconv.Atoi(maxStr)
 			if err != nil {
 				return valueRange{}, err
 			}
@@ -315,23 +297,23 @@ func replaceOrdinals(value string, list []string) string {
 	return value
 }
 
-func checkValidValue(value string, fieldType fieldType) (int, error) {
-	result, err := strconv.Atoi(value)
-
-	if err != nil {
-		return 0, fmt.Errorf("the value in field %s must be number : %s", fieldType.Field, value)
-	}
-
-	if fieldType.Field == cronFieldDayOfWeek && result == 0 {
-		return result, nil
-	}
-
-	if result >= fieldType.MinValue && result <= fieldType.MaxValue {
-		return result, nil
-	}
-
-	return 0, fmt.Errorf("the value in field %s must be between %d and %d", fieldType.Field, fieldType.MinValue, fieldType.MaxValue)
-}
+//func checkValidValue(value string, fieldType fieldType) (int, error) {
+//	result, err := strconv.Atoi(value)
+//
+//	if err != nil {
+//		return 0, fmt.Errorf("the value in field %s must be number : %s", fieldType.Field, value)
+//	}
+//
+//	if fieldType.Field == cronFieldDayOfWeek && result == 0 {
+//		return result, nil
+//	}
+//
+//	if result >= fieldType.MinValue && result <= fieldType.MaxValue {
+//		return result, nil
+//	}
+//
+//	return 0, fmt.Errorf("the value in field %s must be between %d and %d", fieldType.Field, fieldType.MinValue, fieldType.MaxValue)
+//}
 
 func getTimeValue(t time.Time, field cronField) int {
 
