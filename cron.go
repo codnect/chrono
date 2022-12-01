@@ -482,7 +482,11 @@ func IsValid(expression string) error {
 }
 
 func validateSubExpression(subExpression string, fieldType fieldType, specialCharacters map[string]struct{}) error {
-	specialCharactersTmp := specialCharacters
+	specialCharactersTmp := make(map[string]struct{})
+	for k, v := range specialCharacters {
+		specialCharactersTmp[k] = v
+	}
+
 	numberMatched, err := regexp.MatchString("^[0-9]+$", subExpression)
 	if err != nil {
 		return err
@@ -494,8 +498,8 @@ func validateSubExpression(subExpression string, fieldType fieldType, specialCha
 	}
 
 	if strings.Contains(subExpression, ",") {
-		if _, ok := specialCharactersTmp[","]; !ok {
-			return fmt.Errorf("the character %q is not allowed in field %s", "\",\"", fieldType.Field)
+		if _, ok := specialCharacters[","]; !ok {
+			return fmt.Errorf("the character %s is not allowed in field %s", "\",\"", fieldType.Field)
 		}
 		subExp := strings.Split(subExpression, ",")
 
@@ -508,9 +512,37 @@ func validateSubExpression(subExpression string, fieldType fieldType, specialCha
 				return err
 			}
 		}
+	} else if strings.Contains(subExpression, "/") {
+		if _, ok := specialCharacters["/"]; !ok {
+			return fmt.Errorf("the character %s is not allowed in field %s", "\"/\"", fieldType.Field)
+		}
+		subExp := strings.Split(subExpression, "/")
+		if len(subExp) != 2 {
+			return fmt.Errorf("invalid cron expression: %s", subExpression)
+		}
+		delete(specialCharactersTmp, ",")
+		delete(specialCharactersTmp, "/")
+		delete(specialCharactersTmp, "#")
+		delete(specialCharactersTmp, "?")
+		specialCharactersTmp["*"] = struct{}{}
+		err := validateSubExpression(subExp[0], fieldType, specialCharactersTmp)
+		if err != nil {
+			return err
+		}
+
+		delete(specialCharactersTmp, "*")
+		delete(specialCharactersTmp, "L")
+		delete(specialCharactersTmp, "W")
+		fieldTypeTmp := fieldType
+		fieldTypeTmp.MinValue = 1
+		fieldTypeTmp.Field = cronField("step of " + string(fieldType.Field))
+		err = validateSubExpression(subExp[1], fieldTypeTmp, specialCharactersTmp)
+		if err != nil {
+			return err
+		}
 	} else if strings.Contains(subExpression, "-") {
-		if _, ok := specialCharactersTmp["-"]; !ok {
-			return fmt.Errorf("the character %q is not allowed in field %s", "\"-\"", fieldType.Field)
+		if _, ok := specialCharacters["-"]; !ok {
+			return fmt.Errorf("the character %s is not allowed in field %s", "-", fieldType.Field)
 		}
 		subExp := strings.Split(subExpression, "-")
 		if len(subExp) != 2 {
@@ -529,35 +561,9 @@ func validateSubExpression(subExpression string, fieldType fieldType, specialCha
 		if err != nil {
 			return err
 		}
-	} else if strings.Contains(subExpression, "/") {
-		if _, ok := specialCharactersTmp["/"]; !ok {
-			return fmt.Errorf("the character %q is not allowed in field %s", "\"/\"", fieldType.Field)
-		}
-		subExp := strings.Split(subExpression, "/")
-		if len(subExp) != 2 {
-			return fmt.Errorf("invalid cron expression: %s", subExpression)
-		}
-		delete(specialCharactersTmp, ",")
-		delete(specialCharactersTmp, "/")
-		delete(specialCharactersTmp, "-")
-		delete(specialCharactersTmp, "#")
-		delete(specialCharactersTmp, "?")
-		delete(specialCharactersTmp, "L")
-		delete(specialCharactersTmp, "W")
-		specialCharactersTmp["*"] = struct{}{}
-		err := validateSubExpression(subExp[0], fieldType, specialCharactersTmp)
-		if err != nil {
-			return err
-		}
-
-		delete(specialCharactersTmp, "*")
-		err = validateSubExpression(subExp[1], fieldType, specialCharactersTmp)
-		if err != nil {
-			return err
-		}
 	} else if strings.Contains(subExpression, "#") {
-		if _, ok := specialCharactersTmp["#"]; !ok {
-			return fmt.Errorf("the character %q is not allowed in field %s", "\"#\"", fieldType.Field)
+		if _, ok := specialCharacters["#"]; !ok {
+			return fmt.Errorf("the character %s is not allowed in field %s", "#", fieldType.Field)
 		}
 		subExp := strings.Split(subExpression, "#")
 		if len(subExp) != 2 {
@@ -572,26 +578,26 @@ func validateSubExpression(subExpression string, fieldType fieldType, specialCha
 			return err
 		}
 	} else if strings.Contains(subExpression, "L") && !strings.Contains(subExpression, "JUL") {
-		if _, ok := specialCharactersTmp["L"]; !ok {
-			return fmt.Errorf("the character %q is not allowed in field %s", "\"L\"", fieldType.Field)
+		if _, ok := specialCharacters["L"]; !ok {
+			return fmt.Errorf("the character %s is not allowed in field %s", "L", fieldType.Field)
 		}
 
 		return errors.New("L is not supported")
 	} else if strings.Contains(subExpression, "W") {
-		if _, ok := specialCharactersTmp["W"]; !ok {
-			return fmt.Errorf("the character %q is not allowed in field %s", "\"W\"", fieldType.Field)
+		if _, ok := specialCharacters["W"]; !ok {
+			return fmt.Errorf("the character %s is not allowed in field %s", "\"W\"", fieldType.Field)
 		}
 
 		return errors.New("W is not supported")
 	} else if strings.Contains(subExpression, "?") {
-		if _, ok := specialCharactersTmp["?"]; !ok {
-			return fmt.Errorf("the character %q is not allowed in field %s", "\"?\"", fieldType.Field)
+		if _, ok := specialCharacters["?"]; !ok {
+			return fmt.Errorf("the character %s is not allowed in field %s", "\"?\"", fieldType.Field)
 		}
 
 		return errors.New("? is not supported")
 	} else if strings.Contains(subExpression, "*") {
-		if _, ok := specialCharactersTmp["*"]; !ok {
-			return fmt.Errorf("the character %q is not allowed in field %s", "\"*\"", fieldType.Field)
+		if _, ok := specialCharacters["*"]; !ok {
+			return fmt.Errorf("the character %s is not allowed in field %s", "*", fieldType.Field)
 		}
 
 		return nil
@@ -601,11 +607,12 @@ func validateSubExpression(subExpression string, fieldType fieldType, specialCha
 			return err
 		}
 		if value < fieldType.MinValue || value > fieldType.MaxValue {
-			return fmt.Errorf("value %d is out of range for field %s", value, fieldType.Field)
+			return fmt.Errorf("the value %d in %s must be between %d and %d",
+				value, fieldType.Field, fieldType.MinValue, fieldType.MaxValue)
 		}
 	} else if stringMatched {
 		if fieldType.Field != cronFieldMonth && fieldType.Field != cronFieldDayOfWeek {
-			return fmt.Errorf("invalid cron expression: %s", subExpression)
+			return fmt.Errorf("the value in %s must be number: %s", fieldType.Field, subExpression)
 		}
 		if fieldType.Field == cronFieldMonth {
 			find := false
