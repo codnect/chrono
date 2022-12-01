@@ -1,9 +1,10 @@
 package chrono
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 const timeLayout = "2006-01-02 15:04:05"
@@ -631,21 +632,26 @@ func TestParseCronExpression_Errors(t *testing.T) {
 		errorString string
 	}{
 		{expression: "", errorString: "cron expression must not be empty"},
-		{expression: "test * * * * *", errorString: "the value in field SECOND must be number : test"},
-		{expression: "5 * * * *", errorString: "cron expression must consist of 6 fields : found 5 in \"5 * * * *\""},
-		{expression: "61 * * * * *", errorString: "the value in field SECOND must be between 0 and 59"},
-		{expression: "61 * * * * *", errorString: "the value in field SECOND must be between 0 and 59"},
-		{expression: "* 65 * * * *", errorString: "the value in field MINUTE must be between 0 and 59"},
-		{expression: "* * * 0 * *", errorString: "the value in field DAY_OF_MONTH must be between 1 and 31"},
-		{expression: "* * 1-12/0 * * *", errorString: "step must be 1 or higher in \"1-12/0\""},
-		{expression: "* * 0-32/5 * * *", errorString: "the value in field HOUR must be between 0 and 23"},
-		{expression: "* * * * 0-10/2 *", errorString: "the value in field MONTH must be between 1 and 12"},
-		{expression: "* * 1-12/test * * *", errorString: "step must be number : \"test\""},
+		{expression: "test * * * * *", errorString: "the value in SECOND must be number: test"},
+		{expression: "5 * * * *", errorString: "cron expression must consist of 6 fields: found 5 fields in \"5 * * * *\""},
+		{expression: "61 * * * * *", errorString: "the value 61 in SECOND must be between 0 and 59"},
+		{expression: "* 65 * * * *", errorString: "the value 65 in MINUTE must be between 0 and 59"},
+		{expression: "* * * 0 * *", errorString: "the value 0 in DAY_OF_MONTH must be between 1 and 31"},
+		{expression: "* * 1-12/0 * * *", errorString: "the value 0 in step of HOUR must be between 1 and 23"},
+		{expression: "* * 0-32/5 * * *", errorString: "the value 32 in HOUR must be between 0 and 23"},
+		{expression: "* * * * 0-10/2 *", errorString: "the value 0 in MONTH must be between 1 and 12"},
+		{expression: "* * 1-12/test * * *", errorString: "the value in step of HOUR must be number: test"},
+		{expression: "* * * L * *", errorString: "L is not supported"},
+		{expression: "* * * 1W * *", errorString: "W is not supported"},
+		{expression: "* * * ? * *", errorString: "? is not supported"},
+		{expression: "* * * * * L/2", errorString: "L is not supported"},
+		{expression: "* * * * * 2/", errorString: "invalid cron expression: "},
+		{expression: "* * * * * 2/2/2", errorString: "invalid cron expression: 2/2/2"},
+		{expression: "* 2,3,5,6,* * * * *", errorString: "the character * is not allowed in field MINUTE"},
 	}
 
 	for _, testCase := range testCases {
-		exp, err := ParseCronExpression(testCase.expression)
-		assert.Nil(t, exp, "expression must have been parsed : %s", testCase.expression)
+		err := IsValid(testCase.expression)
 		assert.NotNil(t, err, "an error must have been occurred")
 		assert.Equal(t, testCase.errorString, err.Error(),
 			"error string must not match, expected : %s, actual :%s", testCase.errorString, err.Error())
