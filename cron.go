@@ -468,7 +468,7 @@ func IsValid(expression string) error {
 		if len(fields) == 7 {
 			return errors.New("cron expression must consist of 6 fields: Chrono isn't support for 7 fields")
 		}
-		return fmt.Errorf("cron expression must consist of 6 fields: found %d fields in \"%s\"", len(fields), expression)
+		return fmt.Errorf("cron expression must consist of 6 fields: found %d fields in '%s'", len(fields), expression)
 	}
 
 	for i, field := range fields {

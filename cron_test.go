@@ -632,8 +632,10 @@ func TestParseCronExpression_Errors(t *testing.T) {
 		errorString string
 	}{
 		{expression: "", errorString: "cron expression must not be empty"},
+		{expression: "* *", errorString: "cron expression must consist of 6 fields: found 2 fields in '* *'"},
+		{expression: "* * * * * * *", errorString: "cron expression must consist of 6 fields: Chrono isn't support for 7 fields"},
 		{expression: "test * * * * *", errorString: "the value in SECOND must be number: test"},
-		{expression: "5 * * * *", errorString: "cron expression must consist of 6 fields: found 5 fields in \"5 * * * *\""},
+		{expression: "5 * * * *", errorString: "cron expression must consist of 6 fields: found 5 fields in '5 * * * *'"},
 		{expression: "61 * * * * *", errorString: "the value 61 in SECOND must be between 0 and 59"},
 		{expression: "* 65 * * * *", errorString: "the value 65 in MINUTE must be between 0 and 59"},
 		{expression: "* * * 0 * *", errorString: "the value 0 in DAY_OF_MONTH must be between 1 and 31"},
