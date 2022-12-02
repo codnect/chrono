@@ -301,24 +301,6 @@ func replaceOrdinals(value string, list []string) string {
 	return value
 }
 
-//func checkValidValue(value string, fieldType fieldType) (int, error) {
-//	result, err := strconv.Atoi(value)
-//
-//	if err != nil {
-//		return 0, fmt.Errorf("the value in field %s must be number : %s", fieldType.Field, value)
-//	}
-//
-//	if fieldType.Field == cronFieldDayOfWeek && result == 0 {
-//		return result, nil
-//	}
-//
-//	if result >= fieldType.MinValue && result <= fieldType.MaxValue {
-//		return result, nil
-//	}
-//
-//	return 0, fmt.Errorf("the value in field %s must be between %d and %d", fieldType.Field, fieldType.MinValue, fieldType.MaxValue)
-//}
-
 func getTimeValue(t time.Time, field cronField) int {
 
 	switch field {
