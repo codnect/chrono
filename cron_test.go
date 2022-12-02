@@ -653,7 +653,8 @@ func TestParseCronExpression_Errors(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		err := IsValid(testCase.expression)
+		exp, err := ParseCronExpression(testCase.expression)
+		assert.Nil(t, exp, "expression must have been parsed : %s", testCase.expression)
 		assert.NotNil(t, err, "an error must have been occurred")
 		assert.Equal(t, testCase.errorString, err.Error(),
 			"error string must not match, expected : %s, actual :%s", testCase.errorString, err.Error())
