@@ -49,7 +49,7 @@ var (
 		",": struct{}{}, "*": struct{}{}, "/": struct{}{}, "-": struct{}{}, "L": struct{}{}, "W": struct{}{}, "?": struct{}{}}}
 	month = fieldType{cronFieldMonth, 1, 12, map[string]struct{}{
 		",": struct{}{}, "*": struct{}{}, "/": struct{}{}, "-": struct{}{}}}
-	dayOfWeek = fieldType{cronFieldDayOfWeek, 1, 7, map[string]struct{}{
+	dayOfWeek = fieldType{cronFieldDayOfWeek, 0, 6, map[string]struct{}{
 		",": struct{}{}, "*": struct{}{}, "/": struct{}{}, "-": struct{}{}, "L": struct{}{}, "#": struct{}{}, "?": struct{}{}}}
 )
 
@@ -191,6 +191,10 @@ func ParseCronExpression(expression string) (*CronExpression, error) {
 }
 
 func parseField(value string, fieldType fieldType) (*cronFieldBits, error) {
+	if len(value) == 0 {
+		return nil, fmt.Errorf("value must not be empty")
+	}
+
 	if fieldType.Field == cronFieldMonth {
 		value = replaceOrdinals(value, months)
 	} else if fieldType.Field == cronFieldDayOfWeek {
