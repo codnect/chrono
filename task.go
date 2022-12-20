@@ -93,6 +93,8 @@ func WithLocation(location string) Option {
 type ScheduledTask interface {
 	Cancel()
 	IsCancelled() bool
+	// When will this task be executed next?
+	NextExecutionTime() time.Time
 }
 
 type ScheduledRunnableTask struct {
@@ -145,6 +147,13 @@ func (scheduledRunnableTask *ScheduledRunnableTask) isPeriodic() bool {
 
 func (scheduledRunnableTask *ScheduledRunnableTask) isFixedRate() bool {
 	return scheduledRunnableTask.fixedRate
+}
+
+func (scheduledRunnableTask *ScheduledRunnableTask) NextExecutionTime() time.Time {
+	scheduledRunnableTask.taskMu.Lock()
+	defer scheduledRunnableTask.taskMu.Unlock()
+
+	return scheduledRunnableTask.triggerTime
 }
 
 type ScheduledTaskQueue []*ScheduledRunnableTask
@@ -243,4 +252,11 @@ func (task *TriggerTask) Run(ctx context.Context) {
 	if !task.IsCancelled() {
 		task.Schedule()
 	}
+}
+
+func (task *TriggerTask) NextExecutionTime() time.Time {
+	task.triggerContextMu.Lock()
+	defer task.triggerContextMu.Unlock()
+
+	return task.nextTriggerTime
 }

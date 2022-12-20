@@ -2,10 +2,11 @@ package chrono
 
 import (
 	"context"
-	"github.com/stretchr/testify/assert"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestDefaultTaskScheduler(t *testing.T) {
@@ -308,4 +309,27 @@ func TestSimpleTaskScheduler_Shutdown(t *testing.T) {
 	assert.True(t, scheduler.IsShutdown())
 	assert.Equal(t, expected, counter,
 		"after shutdown, previously scheduled tasks should not be rescheduled", counter)
+}
+
+// Assert that we can query the next execution time of a scheduled task.
+func TestSimpleTaskScheduler_ScheduleAndQueryNextRun(t *testing.T) {
+	scheduler := NewSimpleTaskScheduler(NewDefaultTaskExecutor())
+	var task Task = func(ctx context.Context) {} // No-op.
+
+	scheduledTask, err := scheduler.ScheduleWithCron(
+		// Schedule every day
+		task, "0 0 0 * * *",
+		// Starting 1 second from now
+		WithTime(time.Now().Add(1*time.Second)),
+	)
+	assert.Nil(t, err)
+	// Wait for task to fire the first time.
+	<-time.After(2 * time.Second)
+
+	// Just check that the next execution time is, in fact,
+	// in the future. Other tests should cover the details
+	// and exact timing.
+	firesAgainAt := scheduledTask.NextExecutionTime()
+	t.Log(firesAgainAt)
+	assert.True(t, firesAgainAt.After(time.Now()))
 }
