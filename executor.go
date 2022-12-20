@@ -15,6 +15,9 @@ type TaskExecutor interface {
 	Shutdown() chan bool
 }
 
+// An executor schedules and executes tasks.
+// It also reschedules fixed-rate and fixed-delay periodic tasks,
+// though trigger tasks will reschedule themselves.
 type SimpleTaskExecutor struct {
 	nextSequence          int
 	isShutdown            bool
@@ -206,6 +209,7 @@ func (executor *SimpleTaskExecutor) run() {
 				executor.taskQueue = append(executor.taskQueue, rescheduledTask)
 			case stoppedChan := <-executor.shutdownChannel:
 				executor.timer.Stop()
+				// Wait for all current tasks to finish executing.
 				executor.taskWaitGroup.Wait()
 				stoppedChan <- true
 				return
@@ -231,9 +235,14 @@ func (executor *SimpleTaskExecutor) startTask(scheduledRunnableTask *ScheduledRu
 
 			executor.taskWaitGroup.Done()
 
+			// If this task is non-periodic, it should be cancelled after execution.
 			if !scheduledRunnableTask.isPeriodic() {
 				scheduledRunnableTask.Cancel()
 			} else {
+				// If the task is periodic but not at a fixed rate,
+				// then it must be a fixed delay task. This means
+				// that the period is measured from the end of the previous
+				// execution.
 				if !scheduledRunnableTask.isFixedRate() {
 					scheduledRunnableTask.triggerTime = executor.calculateTriggerTime(scheduledRunnableTask.period)
 					executor.rescheduleTaskChannel <- scheduledRunnableTask
@@ -241,6 +250,11 @@ func (executor *SimpleTaskExecutor) startTask(scheduledRunnableTask *ScheduledRu
 			}
 		}()
 
+		// If the task is a fixed-rate periodic task,
+		// then we can schedule the next task
+		// before we begin executing the current task.
+		// We assume that the triggerTime was incremented
+		// before startTask() was called.
 		if scheduledRunnableTask.isPeriodic() && scheduledRunnableTask.isFixedRate() {
 			executor.rescheduleTaskChannel <- scheduledRunnableTask
 		}
