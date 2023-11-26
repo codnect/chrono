@@ -1,4 +1,4 @@
-module github.com/procyon-projects/chrono
+module codnect.io/chrono
 
 go 1.13
 
