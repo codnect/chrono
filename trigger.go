@@ -2,6 +2,10 @@ package chrono
 
 import "time"
 
+// A trigger context is a store of previous times
+// that can be used to calculate the next trigger time.
+// For example, if our schedule runs every 2 days,
+// it is important to know which day our schedule started.
 type TriggerContext interface {
 	LastCompletionTime() time.Time
 	LastExecutionTime() time.Time
@@ -36,6 +40,8 @@ func (ctx *SimpleTriggerContext) LastTriggeredExecutionTime() time.Time {
 	return ctx.lastTriggeredExecutionTime
 }
 
+// A trigger is a strategy which can be used to generate the next
+// execution time, when supplied with context of previous times.
 type Trigger interface {
 	NextExecutionTime(ctx TriggerContext) time.Time
 }

@@ -4,6 +4,9 @@ import (
 	"time"
 )
 
+// A TaskScheduler is the simplified top-level object
+// that most user code will interface with.
+// All state is handled internally by the executor.
 type TaskScheduler interface {
 	Schedule(task Task, options ...Option) (ScheduledTask, error)
 	ScheduleWithCron(task Task, expression string, options ...Option) (ScheduledTask, error)

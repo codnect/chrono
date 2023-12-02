@@ -9,8 +9,12 @@ import (
 	"time"
 )
 
+// A Task represents a function which will be executed by the executor.
 type Task func(ctx context.Context)
 
+// A SchedulerTask represents a task that is about to be scheduled.
+// This struct supports setting values via option functions
+// such as WithTime() and WithLocation().
 type SchedulerTask struct {
 	task      Task
 	startTime time.Time
@@ -90,11 +94,18 @@ func WithLocation(location string) Option {
 	}
 }
 
+// A ScheduledTask is a minimal interface that represents
+// one-off, fixed period, and dynamic period tasks
+// that have been scheduled.
 type ScheduledTask interface {
 	Cancel()
 	IsCancelled() bool
 }
 
+// A ScheduledRunnableTask either represents a fixed-rate task
+// or a fixed-delay task. In either case, finding the time of
+// next execution is a fairly simple operation.
+// For more advanced cases, see TriggerTask.
 type ScheduledRunnableTask struct {
 	id          int
 	task        Task
@@ -165,6 +176,8 @@ func (queue ScheduledTaskQueue) SorByTriggerTime() {
 	sort.Sort(queue)
 }
 
+// A TriggerTask represents a task which re-schedules itself.
+// Useful for dynamic periods, such as those represented via CRON expressions.
 type TriggerTask struct {
 	task                 Task
 	currentScheduledTask *ScheduledRunnableTask
@@ -208,6 +221,8 @@ func (task *TriggerTask) IsCancelled() bool {
 	return task.currentScheduledTask.IsCancelled()
 }
 
+// Schedule the task onto an executor. Note that when the task is run,
+// it schedules itself again.
 func (task *TriggerTask) Schedule() (ScheduledTask, error) {
 	task.triggerContextMu.Lock()
 	defer task.triggerContextMu.Unlock()
@@ -230,6 +245,7 @@ func (task *TriggerTask) Schedule() (ScheduledTask, error) {
 	return task, nil
 }
 
+// Run the trigger task and schedule it again.
 func (task *TriggerTask) Run(ctx context.Context) {
 	task.triggerContextMu.Lock()
 
