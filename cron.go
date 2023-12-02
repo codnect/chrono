@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"math/bits"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -28,19 +29,28 @@ const (
 )
 
 type fieldType struct {
-	Field    cronField
-	MinValue int
-	MaxValue int
+	Field             cronField
+	MinValue          int
+	MaxValue          int
+	SpecialCharacters map[string]struct{}
 }
 
 var (
-	nanoSecond = fieldType{cronFieldNanoSecond, 0, 999999999}
-	second     = fieldType{cronFieldSecond, 0, 59}
-	minute     = fieldType{cronFieldMinute, 0, 59}
-	hour       = fieldType{cronFieldHour, 0, 23}
-	dayOfMonth = fieldType{cronFieldDayOfMonth, 1, 31}
-	month      = fieldType{cronFieldMonth, 1, 12}
-	dayOfWeek  = fieldType{cronFieldDayOfWeek, 1, 7}
+	nanoSecond = fieldType{cronFieldNanoSecond, 0, 999999999,
+		map[string]struct{}{
+			",": struct{}{}, "*": struct{}{}, "/": struct{}{}, "-": struct{}{}}}
+	second = fieldType{cronFieldSecond, 0, 59, map[string]struct{}{
+		",": struct{}{}, "*": struct{}{}, "/": struct{}{}, "-": struct{}{}}}
+	minute = fieldType{cronFieldMinute, 0, 59, map[string]struct{}{
+		",": struct{}{}, "*": struct{}{}, "/": struct{}{}, "-": struct{}{}}}
+	hour = fieldType{cronFieldHour, 0, 23, map[string]struct{}{
+		",": struct{}{}, "*": struct{}{}, "/": struct{}{}, "-": struct{}{}}}
+	dayOfMonth = fieldType{cronFieldDayOfMonth, 1, 31, map[string]struct{}{
+		",": struct{}{}, "*": struct{}{}, "/": struct{}{}, "-": struct{}{}, "L": struct{}{}, "W": struct{}{}, "?": struct{}{}}}
+	month = fieldType{cronFieldMonth, 1, 12, map[string]struct{}{
+		",": struct{}{}, "*": struct{}{}, "/": struct{}{}, "-": struct{}{}}}
+	dayOfWeek = fieldType{cronFieldDayOfWeek, 0, 6, map[string]struct{}{
+		",": struct{}{}, "*": struct{}{}, "/": struct{}{}, "-": struct{}{}, "L": struct{}{}, "#": struct{}{}, "?": struct{}{}}}
 )
 
 var cronFieldTypes = []fieldType{
@@ -152,15 +162,12 @@ func (expression *CronExpression) nextField(field *cronFieldBits, t time.Time) t
 }
 
 func ParseCronExpression(expression string) (*CronExpression, error) {
-	if len(expression) == 0 {
-		return nil, errors.New("cron expression must not be empty")
+	err := IsValid(expression)
+	if err != nil {
+		return nil, err
 	}
 
 	fields := strings.Fields(expression)
-
-	if len(fields) != 6 {
-		return nil, fmt.Errorf("cron expression must consist of 6 fields : found %d in \"%s\"", len(fields), expression)
-	}
 
 	cronExpression := newCronExpression()
 
@@ -221,15 +228,6 @@ func parseField(value string, fieldType fieldType) (*cronFieldBits, error) {
 			stepStr := field[slashPos+1:]
 
 			step, err = strconv.Atoi(stepStr)
-
-			if err != nil {
-				return nil, fmt.Errorf("step must be number : \"%s\"", stepStr)
-			}
-
-			if step <= 0 {
-				return nil, fmt.Errorf("step must be 1 or higher in \"%s\"", value)
-			}
-
 		} else {
 			var err error
 			valueRange, err = parseRange(field, fieldType)
@@ -263,8 +261,7 @@ func parseRange(value string, fieldType fieldType) (valueRange, error) {
 		hyphenPos := strings.Index(value, "-")
 
 		if hyphenPos == -1 {
-			result, err := checkValidValue(value, fieldType)
-
+			result, err := strconv.Atoi(value)
 			if err != nil {
 				return valueRange{}, err
 			}
@@ -274,14 +271,12 @@ func parseRange(value string, fieldType fieldType) (valueRange, error) {
 			maxStr := value[hyphenPos+1:]
 			minStr := value[0:hyphenPos]
 
-			min, err := checkValidValue(minStr, fieldType)
-
+			min, err := strconv.Atoi(minStr)
 			if err != nil {
 				return valueRange{}, err
 			}
-			var max int
-			max, err = checkValidValue(maxStr, fieldType)
 
+			max, err := strconv.Atoi(maxStr)
 			if err != nil {
 				return valueRange{}, err
 			}
@@ -304,24 +299,6 @@ func replaceOrdinals(value string, list []string) string {
 	}
 
 	return value
-}
-
-func checkValidValue(value string, fieldType fieldType) (int, error) {
-	result, err := strconv.Atoi(value)
-
-	if err != nil {
-		return 0, fmt.Errorf("the value in field %s must be number : %s", fieldType.Field, value)
-	}
-
-	if fieldType.Field == cronFieldDayOfWeek && result == 0 {
-		return result, nil
-	}
-
-	if result >= fieldType.MinValue && result <= fieldType.MaxValue {
-		return result, nil
-	}
-
-	return 0, fmt.Errorf("the value in field %s must be between %d and %d", fieldType.Field, fieldType.MinValue, fieldType.MaxValue)
 }
 
 func getTimeValue(t time.Time, field cronField) int {
@@ -445,4 +422,192 @@ func getFieldMaxValue(t time.Time, fieldType fieldType) int {
 
 func isLeapYear(year int) bool {
 	return year%400 == 0 || year%100 != 0 && year%4 == 0
+}
+
+// IsValid returns nil if the cron expression is valid
+func IsValid(expression string) error {
+	if len(expression) == 0 {
+		return errors.New("cron expression must not be empty")
+	}
+
+	fields := strings.Fields(expression)
+
+	if len(fields) != 6 {
+		if len(fields) == 7 {
+			return errors.New("cron expression must consist of 6 fields: Chrono isn't support for 7 fields")
+		}
+		return fmt.Errorf("cron expression must consist of 6 fields: found %d fields in '%s'", len(fields), expression)
+	}
+
+	for i, field := range fields {
+		err := validateSubExpression(field, cronFieldTypes[i], cronFieldTypes[i].SpecialCharacters)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func validateSubExpression(subExpression string, fieldType fieldType, specialCharacters map[string]struct{}) error {
+	specialCharactersTmp := make(map[string]struct{})
+	for k, v := range specialCharacters {
+		specialCharactersTmp[k] = v
+	}
+
+	numberMatched, err := regexp.MatchString("^[0-9]+$", subExpression)
+	if err != nil {
+		return err
+	}
+
+	stringMatched, err := regexp.MatchString("^[a-z,A-Z]+$", strings.ToUpper(subExpression))
+	if err != nil {
+		return err
+	}
+
+	if strings.Contains(subExpression, ",") {
+		if _, ok := specialCharacters[","]; !ok {
+			return fmt.Errorf("the character %s is not allowed in field %s", "\",\"", fieldType.Field)
+		}
+		subExp := strings.Split(subExpression, ",")
+
+		delete(specialCharactersTmp, ",")
+		delete(specialCharactersTmp, "*")
+		delete(specialCharactersTmp, "?")
+		for _, subField := range subExp {
+			err := validateSubExpression(subField, fieldType, specialCharactersTmp)
+			if err != nil {
+				return err
+			}
+		}
+	} else if strings.Contains(subExpression, "/") {
+		if _, ok := specialCharacters["/"]; !ok {
+			return fmt.Errorf("the character %s is not allowed in field %s", "\"/\"", fieldType.Field)
+		}
+		subExp := strings.Split(subExpression, "/")
+		if len(subExp) != 2 {
+			return fmt.Errorf("invalid cron expression: %s", subExpression)
+		}
+		delete(specialCharactersTmp, ",")
+		delete(specialCharactersTmp, "/")
+		delete(specialCharactersTmp, "#")
+		delete(specialCharactersTmp, "?")
+		specialCharactersTmp["*"] = struct{}{}
+		err := validateSubExpression(subExp[0], fieldType, specialCharactersTmp)
+		if err != nil {
+			return err
+		}
+
+		delete(specialCharactersTmp, "*")
+		delete(specialCharactersTmp, "L")
+		delete(specialCharactersTmp, "W")
+		fieldTypeTmp := fieldType
+		fieldTypeTmp.MinValue = 1
+		fieldTypeTmp.Field = cronField("step of " + string(fieldType.Field))
+		err = validateSubExpression(subExp[1], fieldTypeTmp, specialCharactersTmp)
+		if err != nil {
+			return err
+		}
+	} else if strings.Contains(subExpression, "-") {
+		if _, ok := specialCharacters["-"]; !ok {
+			return fmt.Errorf("the character %s is not allowed in field %s", "-", fieldType.Field)
+		}
+		subExp := strings.Split(subExpression, "-")
+		if len(subExp) != 2 {
+			return fmt.Errorf("invalid cron expression: %s", subExpression)
+		}
+		delete(specialCharactersTmp, ",")
+		delete(specialCharactersTmp, "*")
+		delete(specialCharactersTmp, "/")
+		delete(specialCharactersTmp, "-")
+		delete(specialCharactersTmp, "?")
+		err := validateSubExpression(subExp[0], fieldType, specialCharactersTmp)
+		if err != nil {
+			return err
+		}
+		err = validateSubExpression(subExp[1], fieldType, specialCharactersTmp)
+		if err != nil {
+			return err
+		}
+	} else if strings.Contains(subExpression, "#") {
+		if _, ok := specialCharacters["#"]; !ok {
+			return fmt.Errorf("the character %s is not allowed in field %s", "#", fieldType.Field)
+		}
+		subExp := strings.Split(subExpression, "#")
+		if len(subExp) != 2 {
+			return fmt.Errorf("invalid cron expression: %s", subExpression)
+		}
+		err := validateSubExpression(subExp[0], fieldType, map[string]struct{}{})
+		if err != nil {
+			return err
+		}
+		err = validateSubExpression(subExp[1], fieldType, map[string]struct{}{})
+		if err != nil {
+			return err
+		}
+	} else if strings.Contains(subExpression, "L") && !strings.Contains(subExpression, "JUL") {
+		if _, ok := specialCharacters["L"]; !ok {
+			return fmt.Errorf("the character %s is not allowed in field %s", "L", fieldType.Field)
+		}
+
+		return errors.New("L is not supported")
+	} else if strings.Contains(subExpression, "W") {
+		if _, ok := specialCharacters["W"]; !ok {
+			return fmt.Errorf("the character %s is not allowed in field %s", "\"W\"", fieldType.Field)
+		}
+
+		return errors.New("W is not supported")
+	} else if strings.Contains(subExpression, "?") {
+		if _, ok := specialCharacters["?"]; !ok {
+			return fmt.Errorf("the character %s is not allowed in field %s", "\"?\"", fieldType.Field)
+		}
+
+		return errors.New("? is not supported")
+	} else if strings.Contains(subExpression, "*") {
+		if _, ok := specialCharacters["*"]; !ok {
+			return fmt.Errorf("the character %s is not allowed in field %s", "*", fieldType.Field)
+		}
+
+		return nil
+	} else if numberMatched {
+		value, err := strconv.Atoi(subExpression)
+		if err != nil {
+			return err
+		}
+		if value < fieldType.MinValue || value > fieldType.MaxValue {
+			return fmt.Errorf("the value %d in %s must be between %d and %d",
+				value, fieldType.Field, fieldType.MinValue, fieldType.MaxValue)
+		}
+	} else if stringMatched {
+		if fieldType.Field != cronFieldMonth && fieldType.Field != cronFieldDayOfWeek {
+			return fmt.Errorf("the value in %s must be number: %s", fieldType.Field, subExpression)
+		}
+		if fieldType.Field == cronFieldMonth {
+			find := false
+			for _, month := range months {
+				if month == strings.ToUpper(subExpression) {
+					find = true
+					break
+				}
+			}
+			if !find {
+				return fmt.Errorf("invalid cron expression: %s", subExpression)
+			}
+		} else if fieldType.Field == cronFieldDayOfWeek {
+			find := false
+			for _, day := range days {
+				if day == strings.ToUpper(subExpression) {
+					find = true
+					break
+				}
+			}
+			if !find {
+				return fmt.Errorf("invalid cron expression: %s", subExpression)
+			}
+		}
+	} else {
+		return fmt.Errorf("invalid cron expression: %s", subExpression)
+	}
+
+	return nil
 }
