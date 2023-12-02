@@ -6,6 +6,12 @@
 
 Chrono is a scheduler library that lets you run your tasks and code periodically. It provides different scheduling functionalities to make it easier to create a scheduling task.
 
+## Installation
+
+```shell
+go get github.com/procyon-projects/chrono@latest
+```
+
 ## Scheduling a One-Shot Task
 The Schedule method helps us schedule the task to run once at the specified time. In the following example, the task will first be executed 1 second after the current time.
 **WithTime** option is used to specify the execution time.
