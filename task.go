@@ -161,7 +161,7 @@ func (queue ScheduledTaskQueue) Less(i, j int) bool {
 	return queue[i].triggerTime.Before(queue[j].triggerTime)
 }
 
-func (queue ScheduledTaskQueue) SorByTriggerTime() {
+func (queue ScheduledTaskQueue) SortByTriggerTime() {
 	sort.Sort(queue)
 }
 
